@@ -100,7 +100,7 @@ proofAI implements this natively.
 ## Quickstart
 
 ```bash
-git clone https://github.com/scorentab-afk/proofai.git
+git clone https://github.com/proof-ai/proofai.git
 cd proofai
 npm install
 cp .env.example .env
@@ -256,7 +256,7 @@ If you're a lawyer or compliance expert — we'd love your input.
 
 ## License
 
-MIT © proofAI — [github.com/scorentab-afk/proofai](https://github.com/scorentab-afk/proofai)
+MIT © proofAI — [github.com/proof-ai/proofai](https://github.com/proof-ai/proofai)
 
 ---
 

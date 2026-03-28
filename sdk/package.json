@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/scorentab-afk/proofai"
+    "url": "https://github.com/proof-ai/proofai"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
