@@ -20,7 +20,7 @@ serve(async (req) => {
   }
 
   try {
-    const { promptId, executionId, analysisId, signatureId, cognitiveHash } =
+    const { promptId, executionId, analysisId, signatureId, cognitiveHash, subjectId, sessionId, ragSources } =
       await req.json();
 
     if (!promptId || !executionId || !analysisId || !signatureId || !cognitiveHash) {
@@ -79,6 +79,9 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+    // Hash subjectId for GDPR — never store in cleartext
+    const subjectIdHash = subjectId ? await sha256(subjectId) : null;
+
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
       await supabase.from("evidence_bundles").insert({
@@ -92,6 +95,9 @@ serve(async (req) => {
         timeline,
         status: "created",
         created_at: now.toISOString(),
+        subject_id_hash: subjectIdHash,
+        session_id: sessionId || null,
+        rag_sources: ragSources || null,
       });
     }
 

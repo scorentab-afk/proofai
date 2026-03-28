@@ -231,6 +231,45 @@ export interface VerificationResult {
   timestamp: string;
 }
 
+export interface HumanReviewResult {
+  id: string;
+  bundleId: string;
+  reviewerIdHash: string;
+  role: string;
+  decision: 'approved' | 'rejected' | 'flagged';
+  notes: string | null;
+  reviewedAt: string;
+}
+
+export interface MonitoringStats {
+  period: string;
+  generatedAt: string;
+  totalExecutions: number;
+  anomalyCount: number;
+  anomalies: Array<{ type: string; description: string; severity: string }>;
+  statusBreakdown: Record<string, number>;
+  humanReviews: {
+    total: number;
+    approved: number;
+    rejected: number;
+    flagged: number;
+  };
+  riskDistribution: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  gdpr: {
+    anonymizedBundles: number;
+  };
+  compliance: {
+    retentionPolicy: string;
+    loggingEnabled: boolean;
+    humanOversightActive: boolean;
+    blockchainAnchoringActive: boolean;
+  };
+}
+
 // API connected to Supabase Edge Functions
 export const api = {
   compressPrompt: (prompt: string, options: CompressPromptOptions = {}): Promise<CompressPromptResult> =>
@@ -262,6 +301,12 @@ export const api = {
 
   verifySignature: async (signatureId: string, payload: Record<string, unknown>, signature: string): Promise<VerifySignatureResult> =>
     ({ valid: true, signatureId, verifiedAt: new Date().toISOString() }),
+
+  reviewBundle: (bundleId: string, reviewerId: string, role: string, decision: string, notes?: string): Promise<HumanReviewResult> =>
+    callEdge('review', { bundleId, reviewerId, role, decision, notes }),
+
+  getMonitoringStats: (): Promise<MonitoringStats> =>
+    callEdge('monitor', {}),
 };
 
 export default api;
