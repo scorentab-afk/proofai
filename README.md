@@ -97,7 +97,38 @@ proofAI implements this natively.
 
 ---
 
-## Quickstart
+## One-line integration
+
+```bash
+npm install @proofai/sdk
+```
+
+```typescript
+import { ProofAI } from '@proofai/sdk'
+
+const proofai = new ProofAI({ apiKey: 'pk_live_xxx' })
+
+// Full pipeline — one line
+const cert = await proofai.certify('Analyze this contract for legal risks', {
+  provider: 'anthropic',
+})
+
+console.log(cert.verified)        // true
+console.log(cert.bundleHash)      // sha256 hash
+console.log(cert.explorerUrl)     // https://amoy.polygonscan.com/tx/0x...
+
+// Human oversight (Art. 14)
+await proofai.review(cert.bundleId, 'dpo@company.com', 'compliance_officer', 'approved')
+
+// Post-market monitoring (Art. 72)
+const stats = await proofai.monitor()
+```
+
+Or step by step — `compress()`, `execute()`, `analyze()`, `sign()`, `bundle()`, `anchor()`, `verify()`.
+
+---
+
+## Quickstart (self-hosted)
 
 ```bash
 git clone https://github.com/proof-ai/proofai.git
@@ -208,12 +239,13 @@ PROOFAI_SIGNER_IDENTITY=proofai-signer-v1
 
 ## Pricing
 
-| Plan | Price | Traces/month | Certificate |
-|------|-------|-------------|-------------|
-| **Free** | €0 | Unlimited (local hash) | ❌ |
-| **Indie** | €9/mo | 10,000 | 1/year |
-| **Startup** | €29/mo | 100,000 | Unlimited |
-| **Scale** | €99/mo | Unlimited | Unlimited + SLA |
+| Plan | Price | What you get |
+|------|-------|-------------|
+| **Free** | €0 | Compress (10/day), Execute 1 provider (5/day), Verify |
+| **Indie** | €9/mo | Compress (100/day), Execute (50/day), Cognitive Analysis |
+| **Startup** | €29/mo | Unlimited, Multi-provider, Ed25519 Signing, Evidence Bundles |
+| **Scale** | €99/mo | Everything + Blockchain Anchoring, PDF Certificates |
+| **Enterprise** | €499/mo | Everything + SLA 99.9%, Priority Support, SSO |
 
 ---
 
