@@ -91,7 +91,7 @@ When a regulator asks you to prove your AI logs are intact:
 One is a declaration. The other is a proof.
 
 > *"Cryptographic approaches resolve the tension between GDPR erasure rights and AI Act retention obligations through crypto-shredding — when erasure is required, the encryption key is destroyed, not the log. The audit trail remains intact."*
-> — European Data Protection Board guidance
+> — Adapted from European Data Protection Board guidance
 
 proofAI implements this natively.
 
