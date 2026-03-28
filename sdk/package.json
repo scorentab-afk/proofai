@@ -5,12 +5,22 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["ai", "proof", "blockchain", "ed25519", "evidence", "compliance", "audit"],
+  "keywords": [
+    "ai",
+    "proof",
+    "blockchain",
+    "ed25519",
+    "evidence",
+    "compliance",
+    "audit"
+  ],
   "author": "HIRAM",
   "license": "MIT",
   "repository": {
@@ -20,5 +30,8 @@
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.100.1"
   }
 }

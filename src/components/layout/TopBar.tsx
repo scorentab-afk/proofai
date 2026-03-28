@@ -1,4 +1,4 @@
-import { Bell, Search, User, Settings, Menu } from 'lucide-react';
+import { Bell, Search, User, Settings, Menu, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/lib/auth';
 
 interface TopBarProps {
   title: string;
@@ -21,6 +22,18 @@ interface TopBarProps {
 
 export function TopBar({ title, subtitle, onMenuClick, showMenuButton }: TopBarProps) {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const email = user?.email || '';
+  const initials = email
+    ? email.substring(0, 2).toUpperCase()
+    : 'U';
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   return (
     <header className="flex h-14 md:h-16 items-center justify-between border-b border-border bg-card/50 backdrop-blur-sm px-4 md:px-6">
       {/* Left Section */}
@@ -36,7 +49,7 @@ export function TopBar({ title, subtitle, onMenuClick, showMenuButton }: TopBarP
             <Menu className="h-5 w-5" />
           </Button>
         )}
-        
+
         {/* Title Section */}
         <div className="min-w-0">
           <h1 className="text-lg md:text-xl font-semibold text-foreground truncate">{title}</h1>
@@ -69,7 +82,7 @@ export function TopBar({ title, subtitle, onMenuClick, showMenuButton }: TopBarP
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
                 <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white font-medium text-sm">
-                  JD
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -77,10 +90,8 @@ export function TopBar({ title, subtitle, onMenuClick, showMenuButton }: TopBarP
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">John Doe</p>
-                <p className="text-xs text-muted-foreground">
-                  john@cognievi.demo
-                </p>
+                <p className="text-sm font-medium">{email || 'User'}</p>
+                <p className="text-xs text-muted-foreground">Free Plan</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -93,7 +104,8 @@ export function TopBar({ title, subtitle, onMenuClick, showMenuButton }: TopBarP
               <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

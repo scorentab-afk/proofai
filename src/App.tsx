@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import Dashboard from "./pages/Dashboard";
 import PromptCompressor from "./pages/PromptCompressor";
 import AIExecution from "./pages/AIExecution";
@@ -13,9 +14,17 @@ import AuditVerify from "./pages/AuditVerify";
 import AISignature from "./pages/AISignature";
 import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -23,19 +32,22 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/compress" element={<PromptCompressor />} />
-          <Route path="/execute" element={<AIExecution />} />
-          <Route path="/analyze" element={<CognitiveAnalysis />} />
-          <Route path="/bundle" element={<EvidenceBundle />} />
-          <Route path="/anchor" element={<BlockchainAnchor />} />
-          <Route path="/verify" element={<AuditVerify />} />
-          <Route path="/signature" element={<AISignature />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/compress" element={<ProtectedRoute><PromptCompressor /></ProtectedRoute>} />
+            <Route path="/execute" element={<ProtectedRoute><AIExecution /></ProtectedRoute>} />
+            <Route path="/analyze" element={<ProtectedRoute><CognitiveAnalysis /></ProtectedRoute>} />
+            <Route path="/bundle" element={<ProtectedRoute><EvidenceBundle /></ProtectedRoute>} />
+            <Route path="/anchor" element={<ProtectedRoute><BlockchainAnchor /></ProtectedRoute>} />
+            <Route path="/verify" element={<ProtectedRoute><AuditVerify /></ProtectedRoute>} />
+            <Route path="/signature" element={<ProtectedRoute><AISignature /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
