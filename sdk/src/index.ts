@@ -10,8 +10,11 @@ export type {
   AnalyzeResult,
   SignResult,
   BundleResult,
+  BundleOptions,
   AnchorResult,
   VerifyResult,
+  HumanReviewResult,
+  MonitoringStats,
   CertifyOptions,
   Certificate,
 } from './types';
@@ -25,8 +28,11 @@ import type {
   AnalyzeResult,
   SignResult,
   BundleResult,
+  BundleOptions,
   AnchorResult,
   VerifyResult,
+  HumanReviewResult,
+  MonitoringStats,
   CertifyOptions,
   Certificate,
 } from './types';
@@ -108,8 +114,14 @@ export class ProofAI {
     analysisId: string,
     signatureId: string,
     cognitiveHash: string,
+    options?: BundleOptions,
   ): Promise<BundleResult> {
-    return this.call('bundle', { promptId, executionId, analysisId, signatureId, cognitiveHash });
+    return this.call('bundle', {
+      promptId, executionId, analysisId, signatureId, cognitiveHash,
+      subjectId: options?.subjectId,
+      sessionId: options?.sessionId,
+      ragSources: options?.ragSources,
+    });
   }
 
   async anchor(bundleId: string, network: 'polygon' | 'ethereum' = 'polygon'): Promise<AnchorResult> {
@@ -118,6 +130,22 @@ export class ProofAI {
 
   async verify(bundleId: string): Promise<VerifyResult> {
     return this.call('verify', { bundleId });
+  }
+
+  // --- AI Act compliance endpoints ---
+
+  async review(
+    bundleId: string,
+    reviewerId: string,
+    role: 'compliance_officer' | 'data_protection_officer' | 'manager',
+    decision: 'approved' | 'rejected' | 'flagged',
+    notes?: string,
+  ): Promise<HumanReviewResult> {
+    return this.call('review', { bundleId, reviewerId, role, decision, notes });
+  }
+
+  async monitor(): Promise<MonitoringStats> {
+    return this.call('monitor', {});
   }
 
   // --- Full pipeline in one call ---

@@ -123,6 +123,45 @@ export interface VerifyResult {
   timestamp: string;
 }
 
+export interface BundleOptions {
+  subjectId?: string;
+  sessionId?: string;
+  ragSources?: Array<{
+    document_id: string;
+    document_name: string;
+    chunk_index: number;
+    relevance_score: number;
+  }>;
+}
+
+export interface HumanReviewResult {
+  id: string;
+  bundleId: string;
+  reviewerIdHash: string;
+  role: string;
+  decision: 'approved' | 'rejected' | 'flagged';
+  notes: string | null;
+  reviewedAt: string;
+}
+
+export interface MonitoringStats {
+  period: string;
+  generatedAt: string;
+  totalExecutions: number;
+  anomalyCount: number;
+  anomalies: Array<{ type: string; description: string; severity: string }>;
+  statusBreakdown: Record<string, number>;
+  humanReviews: { total: number; approved: number; rejected: number; flagged: number };
+  riskDistribution: { low: number; medium: number; high: number };
+  gdpr: { anonymizedBundles: number };
+  compliance: {
+    retentionPolicy: string;
+    loggingEnabled: boolean;
+    humanOversightActive: boolean;
+    blockchainAnchoringActive: boolean;
+  };
+}
+
 export interface CertifyOptions {
   provider?: Provider;
   modelId?: string;

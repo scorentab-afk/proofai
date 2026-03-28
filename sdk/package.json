@@ -1,6 +1,6 @@
 {
   "name": "@proofai/sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "ProofAI SDK — Cryptographic proof that AI thought before it answered",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
