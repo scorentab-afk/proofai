@@ -1,0 +1,24 @@
+{
+  "name": "proofai-sdk",
+  "version": "1.0.0",
+  "description": "ProofAI SDK — Cryptographic proof that AI thought before it answered",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["ai", "proof", "blockchain", "ed25519", "evidence", "compliance", "audit"],
+  "author": "HIRAM",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scorentab-afk/proofai"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.8.0"
+  }
+}
