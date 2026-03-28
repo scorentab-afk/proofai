@@ -12,6 +12,7 @@ import BlockchainAnchor from "./pages/BlockchainAnchor";
 import AuditVerify from "./pages/AuditVerify";
 import AISignature from "./pages/AISignature";
 import Settings from "./pages/Settings";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/verify" element={<AuditVerify />} />
           <Route path="/signature" element={<AISignature />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
