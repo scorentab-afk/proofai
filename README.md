@@ -53,6 +53,31 @@ proofAI anchors every AI decision on the Polygon blockchain with a real Ed25519 
 
 ---
 
+## Screenshots
+
+### Prompt Compression
+![Compress](https://github.com/user-attachments/assets/e0bac39f-59da-4963-ad18-5034ab8bdd68)
+
+### AI Execution with Reasoning Trace
+![Execute](https://github.com/user-attachments/assets/5b2e5997-c066-43d5-9423-378f354d58f9)
+
+### Cognitive Knowledge Graph
+![Analyze](https://github.com/user-attachments/assets/c46403e7-f6a8-4781-b0bc-843ac1b3f873)
+
+### Verification Passed — 4/4 Integrity Checks
+![Verify](https://github.com/user-attachments/assets/d961cc6a-a0a8-4ee5-9240-2bdb02808d93)
+
+### Blockchain Record — Polygon Anchoring
+![Blockchain](https://github.com/user-attachments/assets/a5fa0b76-fde5-454e-957d-377f10bd2ad7)
+
+### Login — Google OAuth + Email
+![Login](https://github.com/user-attachments/assets/4baf257e-74e2-433f-8edc-c19b0f72fe8d)
+
+### Pricing
+![Pricing](https://github.com/user-attachments/assets/819a42a9-19e3-43d1-b5d7-5810dc11b1ad)
+
+---
+
 ## How it works
 
 ```

@@ -100,7 +100,7 @@ export default function AuditVerify() {
                     onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
                   />
                 </div>
-                <Button onClick={handleVerify} disabled={isLoading} size="lg">
+                <Button onClick={() => handleVerify()} disabled={isLoading} size="lg">
                   {isLoading ? (
                     <LoadingSpinner size="sm" />
                   ) : (
