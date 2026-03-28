@@ -2,8 +2,6 @@
 
 **Cryptographic proof that AI thought before it answered.**
 
-> Vanta te facture 5 000 $/an pour un certificat qu'ils ont signe eux-memes. ProofAI te facture 29 $/mois pour une preuve que personne ne peut falsifier — verifiable sur Polygonscan sans nous faire confiance.
-
 ProofAI creates tamper-proof evidence bundles for every AI interaction. Each response is compressed, executed across multiple providers, analyzed into a cognitive graph, signed with Ed25519, bundled with a hash chain, and anchored to the Polygon blockchain.
 
 ## Pricing
