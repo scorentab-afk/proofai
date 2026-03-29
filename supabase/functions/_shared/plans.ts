@@ -1,149 +1,87 @@
-// ProofAI — Plan & Feature Gating
-// This module defines the freemium tiers and enforces usage limits.
+// ProofAI — Pay-per-Proof billing model
+// 1 proof = 1 complete pipeline run (compress → execute → sign → anchor → verify)
 
-export type PlanId = "free" | "indie" | "startup" | "scale" | "enterprise";
+export type PlanId = "free" | "payg" | "indie" | "startup" | "scale" | "enterprise";
 
-export interface PlanLimits {
-  compressPerDay: number;
-  executePerDay: number;
-  multiProvider: boolean;
-  cognitiveAnalysis: boolean;
-  signing: boolean;
-  evidenceBundle: boolean;
-  blockchainAnchor: boolean;
-  pdfCertificate: boolean;
-  verify: boolean;
+export interface PlanConfig {
+  name: string;
+  pricePerMonth: number;
+  proofsIncluded: number;
+  pricePerProof: number;
+  overageRate: number;
 }
 
-export const PLANS: Record<PlanId, { name: string; price: number; limits: PlanLimits }> = {
+export const PLANS: Record<PlanId, PlanConfig> = {
   free: {
     name: "Free",
-    price: 0,
-    limits: {
-      compressPerDay: 10,
-      executePerDay: 5,
-      multiProvider: false,
-      cognitiveAnalysis: false,
-      signing: false,
-      evidenceBundle: false,
-      blockchainAnchor: false,
-      pdfCertificate: false,
-      verify: true,
-    },
+    pricePerMonth: 0,
+    proofsIncluded: 100,
+    pricePerProof: 0,
+    overageRate: 0,
+  },
+  payg: {
+    name: "Pay-as-you-go",
+    pricePerMonth: 0,
+    proofsIncluded: 0,
+    pricePerProof: 0.05,
+    overageRate: 0.05,
   },
   indie: {
     name: "Indie",
-    price: 9,
-    limits: {
-      compressPerDay: 100,
-      executePerDay: 50,
-      multiProvider: false,
-      cognitiveAnalysis: true,
-      signing: false,
-      evidenceBundle: false,
-      blockchainAnchor: false,
-      pdfCertificate: false,
-      verify: true,
-    },
+    pricePerMonth: 9,
+    proofsIncluded: 500,
+    pricePerProof: 0.018,
+    overageRate: 0.04,
   },
   startup: {
     name: "Startup",
-    price: 29,
-    limits: {
-      compressPerDay: -1, // unlimited
-      executePerDay: -1,
-      multiProvider: true,
-      cognitiveAnalysis: true,
-      signing: true,
-      evidenceBundle: true,
-      blockchainAnchor: false,
-      pdfCertificate: false,
-      verify: true,
-    },
+    pricePerMonth: 29,
+    proofsIncluded: 2000,
+    pricePerProof: 0.0145,
+    overageRate: 0.03,
   },
   scale: {
     name: "Scale",
-    price: 99,
-    limits: {
-      compressPerDay: -1,
-      executePerDay: -1,
-      multiProvider: true,
-      cognitiveAnalysis: true,
-      signing: true,
-      evidenceBundle: true,
-      blockchainAnchor: true,
-      pdfCertificate: true,
-      verify: true,
-    },
+    pricePerMonth: 99,
+    proofsIncluded: 10000,
+    pricePerProof: 0.0099,
+    overageRate: 0.02,
   },
   enterprise: {
     name: "Enterprise",
-    price: 499,
-    limits: {
-      compressPerDay: -1,
-      executePerDay: -1,
-      multiProvider: true,
-      cognitiveAnalysis: true,
-      signing: true,
-      evidenceBundle: true,
-      blockchainAnchor: true,
-      pdfCertificate: true,
-      verify: true,
-    },
+    pricePerMonth: 499,
+    proofsIncluded: -1,
+    pricePerProof: 0,
+    overageRate: 0,
   },
 };
 
-/**
- * Check if a feature is allowed for the given plan.
- * Returns { allowed: true } or { allowed: false, reason: string, requiredPlan: PlanId }.
- */
-export function checkFeature(
+export function checkProofAllowance(
   plan: PlanId,
-  feature: keyof PlanLimits
-): { allowed: true } | { allowed: false; reason: string; requiredPlan: PlanId } {
-  const limits = PLANS[plan].limits;
-  const value = limits[feature];
-
-  if (typeof value === "boolean" && !value) {
-    // Find the cheapest plan that has this feature
-    const requiredPlan = (Object.keys(PLANS) as PlanId[]).find(
-      (p) => PLANS[p].limits[feature] === true
-    ) || "enterprise";
+  proofsUsed: number,
+  proofsLimit: number | null,
+): { allowed: true; remaining: number | null } | { allowed: false; reason: string; suggestedPlan: PlanId } {
+  if (plan === "enterprise" || PLANS[plan].proofsIncluded === -1) {
+    return { allowed: true, remaining: null };
+  }
+  if (plan === "payg") {
+    return { allowed: true, remaining: null };
+  }
+  const limit = proofsLimit ?? PLANS[plan].proofsIncluded;
+  if (proofsUsed >= limit) {
     return {
       allowed: false,
-      reason: `${String(feature)} requires ${PLANS[requiredPlan].name} plan (€${PLANS[requiredPlan].price}/mo)`,
-      requiredPlan,
+      reason: `Proof limit reached (${proofsUsed}/${limit}). Upgrade to continue.`,
+      suggestedPlan: plan === "free" ? "payg" : "startup",
     };
   }
-
-  return { allowed: true };
+  return { allowed: true, remaining: limit - proofsUsed };
 }
 
-/**
- * Check daily rate limit. Returns remaining count or error.
- * Pass currentCount = number of requests made today.
- */
-export function checkRateLimit(
-  plan: PlanId,
-  feature: "compressPerDay" | "executePerDay",
-  currentCount: number
-): { allowed: true; remaining: number } | { allowed: false; reason: string; requiredPlan: PlanId } {
-  const limit = PLANS[plan].limits[feature];
-
-  if (limit === -1) {
-    return { allowed: true, remaining: Infinity };
-  }
-
-  if (currentCount >= limit) {
-    const nextPlan = (Object.keys(PLANS) as PlanId[]).find(
-      (p) => PLANS[p].limits[feature] === -1 || (PLANS[p].limits[feature] as number) > limit
-    ) || "indie";
-    return {
-      allowed: false,
-      reason: `Daily limit reached (${limit}/${feature}). Upgrade to ${PLANS[nextPlan].name} for more.`,
-      requiredPlan: nextPlan,
-    };
-  }
-
-  return { allowed: true, remaining: limit - currentCount };
+export function getProofCost(plan: PlanId, proofsUsedThisPeriod: number): number {
+  const config = PLANS[plan];
+  if (plan === "free" || plan === "enterprise") return 0;
+  if (plan === "payg") return config.pricePerProof;
+  if (proofsUsedThisPeriod < config.proofsIncluded) return 0;
+  return config.overageRate;
 }

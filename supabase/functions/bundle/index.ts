@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.12";
+import { authenticateRequest, recordProofEvent } from "../_shared/auth-middleware.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,15 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate and check proof quota
+    const auth = await authenticateRequest(req);
+    if (!auth.allowed) {
+      return new Response(
+        JSON.stringify({ error: auth.error || "Proof limit reached. Upgrade your plan." }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { promptId, executionId, analysisId, signatureId, cognitiveHash, subjectId, sessionId, ragSources } =
       await req.json();
 
@@ -100,6 +110,9 @@ serve(async (req) => {
         rag_sources: ragSources || null,
       });
     }
+
+    // Record proof event for billing
+    await recordProofEvent(auth, bundleId, "proofai", 0);
 
     const result = {
       id: bundleId,

@@ -267,13 +267,15 @@ PROOFAI_SIGNER_IDENTITY=proofai-signer-v1
 
 ## Pricing
 
-| Plan | Price | What you get |
-|------|-------|-------------|
-| **Free** | €0 | Compress (10/day), Execute 1 provider (5/day), Verify |
-| **Indie** | €9/mo | Compress (100/day), Execute (50/day), Cognitive Analysis |
-| **Startup** | €29/mo | Unlimited, Multi-provider, Ed25519 Signing, Evidence Bundles |
-| **Scale** | €99/mo | Everything + Blockchain Anchoring, PDF Certificates |
-| **Enterprise** | €499/mo | Everything + SLA 99.9%, Priority Support, SSO |
+**1 proof = compress + execute + analyze + sign + anchor + verify**
+
+| Plan | Price | Proofs | Effective rate |
+|------|-------|--------|---------------|
+| **Free** | €0 | 100 total | Free |
+| **Pay-as-you-go** | €0.05/proof | Unlimited | €0.05 |
+| **Indie** | €9/mo | 500 included | €0.018/proof |
+| **Startup** | €29/mo | 2,000 included | €0.015/proof |
+| **Scale** | €99/mo | 10,000 included | €0.01/proof |
 
 ---
 
