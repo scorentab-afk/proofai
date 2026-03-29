@@ -50,12 +50,18 @@ export class ProofAI {
   }
 
   private async call<T>(path: string, body: unknown): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    // pk_live_ keys use x-api-key header, others use Authorization Bearer
+    if (this.apiKey.startsWith('pk_live_')) {
+      headers['x-api-key'] = this.apiKey;
+    } else {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
     const res = await fetch(`${this.baseUrl}/${path}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
+      headers,
       body: JSON.stringify(body),
     });
     if (!res.ok) {

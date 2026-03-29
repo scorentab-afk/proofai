@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { authenticateRequest } from "../_shared/auth-middleware.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
 serve(async (req) => {
@@ -11,6 +12,13 @@ serve(async (req) => {
   }
 
   try {
+    const auth = await authenticateRequest(req);
+    if (!auth.allowed) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { prompt, options = {} } = await req.json();
     if (!prompt) {
       return new Response(JSON.stringify({ error: "prompt is required" }), {
