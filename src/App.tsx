@@ -15,6 +15,7 @@ import AISignature from "./pages/AISignature";
 import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
 import Login from "./pages/Login";
+import RegulatorPortal from "./pages/RegulatorPortal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/regulator" element={<RegulatorPortal />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/compress" element={<ProtectedRoute><PromptCompressor /></ProtectedRoute>} />
             <Route path="/execute" element={<ProtectedRoute><AIExecution /></ProtectedRoute>} />
