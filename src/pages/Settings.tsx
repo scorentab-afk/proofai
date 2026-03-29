@@ -61,7 +61,11 @@ export default function Settings() {
         .from('subscriptions')
         .select('*')
         .single();
-      if (sub) setSubscription(sub);
+      if (sub) {
+        setSubscription(sub);
+      } else {
+        setSubscription({ plan: 'free', status: 'active', proofs_used_this_period: 0, proofs_included: 100 });
+      }
     } catch (err) {
       console.error(err);
     } finally {

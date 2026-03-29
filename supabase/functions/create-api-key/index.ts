@@ -13,8 +13,12 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Read body first (stream can only be read once)
+    const body = await req.json().catch(() => ({}));
+    const name = body.name || "Default";
 
     // Get user from auth header
     const authHeader = req.headers.get("Authorization");
@@ -28,13 +32,30 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
+      return new Response(JSON.stringify({ error: "Invalid token: " + (authError?.message || "unknown") }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { name = "Default" } = await req.json().catch(() => ({}));
+    // Ensure subscription exists (create if missing — handles OAuth signup edge case)
+    const { data: existingSub } = await supabase
+      .from("subscriptions")
+      .select("plan")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!existingSub) {
+      await supabase.from("subscriptions").insert({
+        user_id: user.id,
+        plan: "free",
+        status: "active",
+        proofs_included: 100,
+        proofs_used_this_period: 0,
+      });
+    }
+
+    const plan = existingSub?.plan || "free";
 
     // Generate API key: pk_live_ + 32 random chars
     const randomBytes = new Uint8Array(24);
@@ -53,14 +74,15 @@ serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    // Get user's plan
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("plan")
-      .eq("user_id", user.id)
-      .single();
-
-    const plan = sub?.plan || "free";
+    // Proof limits by plan
+    const limitsMap: Record<string, number | null> = {
+      free: 100,
+      payg: null,
+      indie: 500,
+      startup: 2000,
+      scale: 10000,
+      enterprise: null,
+    };
 
     // Insert key
     const { error: insertError } = await supabase.from("api_keys").insert({
@@ -69,6 +91,8 @@ serve(async (req) => {
       key_prefix: keyPrefix,
       name,
       plan,
+      proofs_used: 0,
+      proofs_limit: limitsMap[plan] ?? 100,
     });
 
     if (insertError) {
@@ -78,7 +102,6 @@ serve(async (req) => {
       });
     }
 
-    // Return the raw key ONCE — it won't be shown again
     return new Response(
       JSON.stringify({
         apiKey,
