@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:54321/functions/v1';
@@ -74,11 +75,12 @@ const REGULATOR_INFO = [
 ];
 
 export default function RegulatorPortal() {
+  const [regulatorToken, setRegulatorToken] = useState('');
   const [bundleId, setBundleId] = useState('');
   const [txHash, setTxHash] = useState('');
   const [bulkIds, setBulkIds] = useState('');
   const [loading, setLoading] = useState(false);
-  const [report, setReport] = useState<ComplianceReport | null>(null);
+  const [report, setReport] = useState<(ComplianceReport & { content?: { promptContent: string | null; aiResponse: string | null; accessLevel: string; hint?: string } }) | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
 
   const callRegulatorAPI = async (body: Record<string, unknown>) => {
@@ -87,6 +89,7 @@ export default function RegulatorPortal() {
       headers: {
         'Content-Type': 'application/json',
         ...(ANON_KEY ? { 'Authorization': `Bearer ${ANON_KEY}` } : {}),
+        ...(regulatorToken ? { 'x-regulator-token': regulatorToken } : {}),
       },
       body: JSON.stringify(body),
     });
@@ -187,6 +190,30 @@ export default function RegulatorPortal() {
             );
           })}
         </div>
+
+        {/* Regulator auth */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Shield className="h-8 w-8 text-primary shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Label className="text-sm font-semibold">Regulator Access Token</Label>
+                <Input
+                  type="password"
+                  placeholder="reg_dgccrf_a1b2c3d4e5f6..."
+                  value={regulatorToken}
+                  onChange={(e) => setRegulatorToken(e.target.value)}
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {regulatorToken
+                    ? 'Token provided — full content access enabled'
+                    : 'Without a token, you can verify compliance checks but cannot view prompt/response content'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Verification tabs */}
         <Tabs defaultValue="single">
@@ -347,6 +374,49 @@ export default function RegulatorPortal() {
                         <ExternalLink className="ml-2 h-4 w-4" />
                       </a>
                     </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Content — only with regulator token */}
+              {report.content?.accessLevel === 'full' && report.content.promptContent && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-primary" />
+                      Evidence Content
+                      <Badge variant="outline" className="ml-2 text-xs">Regulator Access</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Full prompt and AI response — visible only with authenticated regulator token
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Prompt</Label>
+                      <div className="mt-1 bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap border">
+                        {report.content.promptContent}
+                      </div>
+                    </div>
+                    {report.content.aiResponse && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">AI Response</Label>
+                        <div className="mt-1 bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap border">
+                          {report.content.aiResponse}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {report.content?.accessLevel === 'public' && (
+                <Card className="border-dashed">
+                  <CardContent className="pt-6 text-center">
+                    <Shield className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      {report.content.hint}
+                    </p>
                   </CardContent>
                 </Card>
               )}

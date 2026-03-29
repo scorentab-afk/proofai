@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.12";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-regulator-token",
 };
 
 async function sha256(data: string): Promise<string> {
@@ -43,11 +43,35 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Authenticate regulator token (optional — without token, content is hidden)
+    const regulatorToken = req.headers.get("x-regulator-token") || body.regulatorToken || "";
+    let regulatorAuth: { id: string; scope: string } | null = null;
+
+    if (regulatorToken) {
+      const tokenHash = await sha256(regulatorToken);
+      const { data: tokenData } = await supabase
+        .from("regulator_tokens")
+        .select("id, scope, is_active, expires_at")
+        .eq("token_hash", tokenHash)
+        .single();
+
+      if (tokenData && tokenData.is_active) {
+        // Check expiry
+        if (!tokenData.expires_at || new Date(tokenData.expires_at) > new Date()) {
+          regulatorAuth = { id: tokenData.id, scope: tokenData.scope };
+          // Update last_used_at
+          await supabase.from("regulator_tokens")
+            .update({ last_used_at: new Date().toISOString() })
+            .eq("id", tokenData.id);
+        }
+      }
+    }
+
     // Bulk verification mode
     if (bundleIds && Array.isArray(bundleIds)) {
       const results = [];
       for (const bid of bundleIds.slice(0, 100)) { // max 100 per request
-        const report = await generateComplianceReport(supabase, bid);
+        const report = await generateComplianceReport(supabase, bid, regulatorAuth);
         results.push(report);
       }
       return new Response(JSON.stringify({
@@ -82,7 +106,16 @@ serve(async (req) => {
       );
     }
 
-    const report = await generateComplianceReport(supabase, targetBundleId);
+    const report = await generateComplianceReport(supabase, targetBundleId, regulatorAuth);
+
+    // Log regulator access
+    if (regulatorAuth) {
+      await supabase.from("regulator_access_log").insert({
+        regulator_token_id: regulatorAuth.id,
+        bundle_id: targetBundleId,
+        action: "view",
+      }).catch(() => {});
+    }
 
     return new Response(JSON.stringify(report), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -95,7 +128,11 @@ serve(async (req) => {
   }
 });
 
-async function generateComplianceReport(supabase: ReturnType<typeof createClient>, bundleId: string) {
+async function generateComplianceReport(
+  supabase: ReturnType<typeof createClient>,
+  bundleId: string,
+  regulatorAuth: { id: string; scope: string } | null,
+) {
   // Fetch bundle
   const { data: bundle } = await supabase
     .from("evidence_bundles")
@@ -237,6 +274,21 @@ async function generateComplianceReport(supabase: ReturnType<typeof createClient
     } : null,
     timeline: bundle.timeline,
     regulators,
+    // Content — only visible with authenticated regulator token (scope=full)
+    content: regulatorAuth && regulatorAuth.scope === "full" ? {
+      promptContent: bundle.prompt_content || null,
+      aiResponse: bundle.ai_response || null,
+      provider: bundle.provider || null,
+      model: bundle.model || null,
+      accessLevel: "full",
+    } : {
+      promptContent: null,
+      aiResponse: null,
+      accessLevel: regulatorAuth ? "metadata_only" : "public",
+      hint: !regulatorAuth
+        ? "Authenticate with a regulator token to view prompt and AI response content."
+        : "Your token scope is metadata_only. Request full scope for content access.",
+    },
     generatedAt: new Date().toISOString(),
     disclaimer: "This report is generated automatically by ProofAI. It maps evidence against EU AI Act requirements but does not constitute legal advice. Verification of blockchain anchors can be performed independently at polygonscan.com.",
   };

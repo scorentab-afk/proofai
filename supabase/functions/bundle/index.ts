@@ -30,7 +30,7 @@ serve(async (req) => {
       );
     }
 
-    const { promptId, executionId, analysisId, signatureId, cognitiveHash, subjectId, sessionId, ragSources } =
+    const { promptId, executionId, analysisId, signatureId, cognitiveHash, subjectId, sessionId, ragSources, promptContent, aiResponse, provider, model } =
       await req.json();
 
     if (!promptId || !executionId || !analysisId || !signatureId || !cognitiveHash) {
@@ -108,6 +108,10 @@ serve(async (req) => {
         subject_id_hash: subjectIdHash,
         session_id: sessionId || null,
         rag_sources: ragSources || null,
+        prompt_content: promptContent || null,
+        ai_response: aiResponse || null,
+        provider: provider || null,
+        model: model || null,
       });
     }
 
