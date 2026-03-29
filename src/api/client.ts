@@ -289,9 +289,11 @@ export const api = {
     executionId: string,
     analysisId: string,
     signatureId: string,
-    cognitiveHash: string
+    cognitiveHash: string,
+    promptContent?: string,
+    aiResponse?: string,
   ): Promise<EvidenceBundleResult> =>
-    callEdge('bundle', { promptId, executionId, analysisId, signatureId, cognitiveHash }),
+    callEdge('bundle', { promptId, executionId, analysisId, signatureId, cognitiveHash, promptContent, aiResponse }),
 
   anchorToBlockchain: (bundleId: string, network: 'polygon' | 'ethereum'): Promise<BlockchainAnchorResult> =>
     callEdge('anchor', { bundleId, network }),

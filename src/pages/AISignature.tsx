@@ -133,6 +133,7 @@ const AISignature = () => {
         navigate,
         '/bundle',
         { ...pipelineData, signatureId: result.signatureId },
+        { originalPrompt: (location.state as Record<string, unknown>)?.originalPrompt, aiResponse: (location.state as Record<string, unknown>)?.aiResponse },
       );
     } catch (error) {
       toast.error('Failed to sign AI response');
@@ -232,6 +233,7 @@ const AISignature = () => {
           navigate,
           '/bundle',
           { ...pipelineData, signatureId: result.signatureId },
+          { originalPrompt: (location.state as Record<string, unknown>)?.originalPrompt, aiResponse: (location.state as Record<string, unknown>)?.aiResponse },
         );
       }
     } catch (error) {

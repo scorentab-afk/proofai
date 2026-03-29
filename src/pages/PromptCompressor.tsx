@@ -47,7 +47,7 @@ export default function PromptCompressor() {
       setResult(response);
       toast.success('Prompt compressed successfully!');
       // Auto-navigate to AI Execution with chosen provider
-      navigatePipeline(navigate, '/execute', { promptId: response.id }, { promptText: response.compressedDsl, provider });
+      navigatePipeline(navigate, '/execute', { promptId: response.id }, { promptText: response.compressedDsl, provider, originalPrompt: prompt });
     } catch (error) {
       toast.error('Failed to compress prompt');
     } finally {

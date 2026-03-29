@@ -15,10 +15,11 @@ import { toast } from 'sonner';
 import { api, EvidenceBundleResult, BlockchainAnchorResult } from '@/api/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function EvidenceBundle() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const autoRunTriggered = useRef(false);
 
@@ -89,6 +90,7 @@ export default function EvidenceBundle() {
 
   const handleAutoCreateBundle = async () => {
     setIsLoading(true);
+    const stateData = (location.state as Record<string, unknown>) || {};
     try {
       const response = await api.createEvidenceBundle(
         pipelineData.promptId!,
@@ -96,6 +98,8 @@ export default function EvidenceBundle() {
         pipelineData.analysisId!,
         pipelineData.signatureId!,
         pipelineData.cognitiveHash!,
+        stateData.originalPrompt as string | undefined,
+        stateData.aiResponse as string | undefined,
       );
       setResult(response);
       toast.success('Evidence bundle created successfully!');

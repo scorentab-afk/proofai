@@ -87,7 +87,7 @@ export default function AIExecution() {
           navigate,
           '/analyze',
           { ...pipelineData, promptId: pipelineData.promptId || ref, executionId: response.id },
-          { analysisText: response.output },
+          { analysisText: response.output, originalPrompt: (location.state as Record<string, unknown>)?.originalPrompt, aiResponse: response.output },
         );
       }
     } catch (error) {

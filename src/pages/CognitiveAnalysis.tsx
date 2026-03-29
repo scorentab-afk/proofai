@@ -131,7 +131,7 @@ export default function CognitiveAnalysis() {
           navigate,
           '/signature',
           { ...pipelineData, executionId: execId, analysisId: response.id, cognitiveHash: response.cognitiveHash },
-          { rawOutput: text },
+          { rawOutput: text, originalPrompt: (location.state as Record<string, unknown>)?.originalPrompt, aiResponse: (location.state as Record<string, unknown>)?.aiResponse },
         );
       }
     } catch (error) {
