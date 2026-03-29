@@ -81,6 +81,8 @@ export default function AIExecution() {
       });
       setResult(response);
       toast.success('AI execution completed with reasoning trace!');
+      // Store AI response for bundle creation later
+      sessionStorage.setItem('proofai_aiResponse', response.output);
       // Auto-navigate to Cognitive Analysis
       if (autoRun || pipelineData.promptId) {
         navigatePipeline(

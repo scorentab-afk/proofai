@@ -46,6 +46,8 @@ export default function PromptCompressor() {
       });
       setResult(response);
       toast.success('Prompt compressed successfully!');
+      // Store prompt for bundle creation later
+      sessionStorage.setItem('proofai_originalPrompt', prompt);
       // Auto-navigate to AI Execution with chosen provider
       navigatePipeline(navigate, '/execute', { promptId: response.id }, { promptText: response.compressedDsl, provider, originalPrompt: prompt });
     } catch (error) {

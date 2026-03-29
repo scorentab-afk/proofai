@@ -90,7 +90,8 @@ export default function EvidenceBundle() {
 
   const handleAutoCreateBundle = async () => {
     setIsLoading(true);
-    const stateData = (location.state as Record<string, unknown>) || {};
+    const promptContent = sessionStorage.getItem('proofai_originalPrompt') || undefined;
+    const aiResponseContent = sessionStorage.getItem('proofai_aiResponse') || undefined;
     try {
       const response = await api.createEvidenceBundle(
         pipelineData.promptId!,
@@ -98,8 +99,8 @@ export default function EvidenceBundle() {
         pipelineData.analysisId!,
         pipelineData.signatureId!,
         pipelineData.cognitiveHash!,
-        stateData.originalPrompt as string | undefined,
-        stateData.aiResponse as string | undefined,
+        promptContent,
+        aiResponseContent,
       );
       setResult(response);
       toast.success('Evidence bundle created successfully!');
