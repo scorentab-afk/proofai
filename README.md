@@ -2,14 +2,28 @@
 
 **Cryptographic proof that your AI decisions cannot be falsified.**
 
-> *Every compliance tool stores your logs in their database. They can modify them.*
-> *We anchor them on Polygon. Nobody can — not even us.*
+> *Anthropic can't certify your logs. OpenAI can't certify your logs. Google can't certify your logs.*
+> *They built the models — not the audit trail. That's your problem.*
+> *proofAI makes it a solved problem.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Article%2012%20Ready-blue.svg)](https://artificialintelligenceact.eu/article/12/)
 [![Polygon Amoy](https://img.shields.io/badge/Blockchain-Polygon%20Amoy-8247E5.svg)](https://amoy.polygonscan.com)
 [![Ed25519](https://img.shields.io/badge/Crypto-Ed25519-orange.svg)](https://github.com/paulmillr/noble-ed25519)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E.svg)](https://supabase.com)
+
+---
+
+## Why providers can't solve this for you
+
+**1. They're a party to the case.**
+When a regulator audits your AI system, the provider (Anthropic, OpenAI, Google) is a stakeholder — not an independent witness. Their logs are evidence they produced about their own product. No court treats that as proof.
+
+**2. The AI Act puts the obligation on the deployer — not the provider.**
+Article 26 is explicit: the deployer (you) must ensure logging, monitoring, and human oversight. The provider has no legal obligation to certify your compliance. They won't, and they can't.
+
+**3. Providers don't have the infrastructure.**
+Claude doesn't write your logs to a blockchain. GPT doesn't sign your outputs with Ed25519. Gemini doesn't generate compliance certificates. They're model providers — not audit infrastructure.
 
 ---
 
@@ -34,22 +48,23 @@ proofAI anchors every AI decision on the Polygon blockchain with a real Ed25519 
 
 ## EU AI Act compliance coverage
 
-| Requirement | Article | trail | Vanta | **proofAI** |
-|-------------|---------|-------|-------|-------------|
-| Automatic event logging | Art. 12 | ✅ | ✅ | ✅ |
-| 6-month log retention | Art. 19 | ✅ | ✅ | ✅ |
-| Subject identification (hashed) | Art. 12 | ✅ | ✅ | ✅ |
-| RAG / reference database tracking | Art. 12 | ❌ | ❌ | ✅ |
-| Human oversight logging | Art. 14 | ✅ | ✅ | ✅ |
-| Reasoning trace | Art. 12 | ❌ | ❌ | ✅ |
-| Gemini thought signatures | Art. 12 | ❌ | ❌ | ✅ |
-| Post-market monitoring | Art. 72 | ✅ | ❌ | ✅ |
-| Tamper-evident logs | Art. 19 | ❌ | ❌ | ✅ |
-| Ed25519 cryptographic signature | Art. 19 | ❌ | ❌ | ✅ |
-| Blockchain anchor (verifiable by anyone) | Art. 19 | ❌ | ❌ | ✅ |
-| GDPR crypto-shredding (Art. 17) | GDPR | ❌ | ❌ | ✅ |
-| Open source | — | ❌ | ❌ | ✅ |
-| Price | — | €500+/mo | €5k+/yr | **€9/mo** |
+| Requirement | Article | Providers | trail | Vanta | **proofAI** |
+|-------------|---------|-----------|-------|-------|-------------|
+| Automatic event logging | Art. 12 | ❌ | ✅ | ✅ | ✅ |
+| 6-month log retention | Art. 19 | ❌ | ✅ | ✅ | ✅ |
+| Subject identification (hashed) | Art. 12 | ❌ | ✅ | ✅ | ✅ |
+| RAG / reference database tracking | Art. 12 | ❌ | ❌ | ❌ | ✅ |
+| Human oversight logging | Art. 14 | ❌ | ✅ | ✅ | ✅ |
+| Reasoning trace | Art. 12 | ❌ | ❌ | ❌ | ✅ |
+| Gemini thought signatures | Art. 12 | ❌ | ❌ | ❌ | ✅ |
+| Post-market monitoring | Art. 72 | ❌ | ✅ | ❌ | ✅ |
+| Tamper-evident logs | Art. 19 | ❌ | ❌ | ❌ | ✅ |
+| Ed25519 cryptographic signature | Art. 19 | ❌ | ❌ | ❌ | ✅ |
+| Blockchain anchor (verifiable by anyone) | Art. 19 | ❌ | ❌ | ❌ | ✅ |
+| Independent third party (not party to case) | Art. 19 | ❌ | ❌ | ❌ | ✅ |
+| GDPR crypto-shredding (Art. 17) | GDPR | ❌ | ❌ | ❌ | ✅ |
+| Open source | — | ❌ | ❌ | ❌ | ✅ |
+| Price | — | N/A | €500+/mo | €5k+/yr | **€0.05/proof** |
 
 ---
 
@@ -113,10 +128,11 @@ No account. No login. No middleman. Just math.
 
 When a regulator asks you to prove your AI logs are intact:
 
+**OpenAI / Anthropic answer:** *"We can't certify your logs — that's the deployer's responsibility."*
 **trail / Vanta answer:** *"Here's a PDF we generated from our database."*
 **proofAI answer:** *"Here's the Polygonscan URL. Verify it yourself."*
 
-One is a declaration. The other is a proof.
+One is a refusal. One is a declaration. One is a proof.
 
 > *"Cryptographic approaches resolve the tension between GDPR erasure rights and AI Act retention obligations through crypto-shredding — when erasure is required, the encryption key is destroyed, not the log. The audit trail remains intact."*
 > — Adapted from European Data Protection Board guidance
@@ -322,4 +338,4 @@ MIT © proofAI — [github.com/proof-ai/proofai](https://github.com/proof-ai/pro
 
 ---
 
-*Built in Paris. Signed with Ed25519. Anchored on Polygon. Verified by math.*
+*Not by Anthropic. Not by OpenAI. Not by us. By the blockchain.*
