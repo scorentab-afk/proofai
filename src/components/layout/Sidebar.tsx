@@ -13,6 +13,7 @@ import {
   ChevronRight,
   FileSignature,
   CreditCard,
+  Settings,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Blockchain Anchor', href: '/anchor', icon: Link2 },
   { name: 'Audit & Verify', href: '/verify', icon: Shield },
   { name: 'Pricing', href: '/pricing', icon: CreditCard },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 interface SidebarProps {

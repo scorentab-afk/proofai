@@ -5,276 +5,308 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Upload, FileArchive, Trash2, Download, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Key, Plus, Copy, Trash2, User, CreditCard, Shield, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth, supabase } from '@/lib/auth';
 
-interface UploadedFile {
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:54321/functions/v1';
+
+interface ApiKey {
   id: string;
+  key_prefix: string;
   name: string;
-  size: number;
-  uploadedAt: string;
-  status: 'pending' | 'ready' | 'error';
-  isDefault?: boolean;
+  plan: string;
+  proofs_used: number;
+  proofs_limit: number | null;
+  is_active: boolean;
+  last_used_at: string | null;
+  created_at: string;
 }
 
-const STORAGE_KEY = 'cogni-evidence-files';
-
-const defaultFile: UploadedFile = {
-  id: 'default-files-zip',
-  name: 'files.zip',
-  size: 1024 * 50,
-  uploadedAt: new Date().toISOString(),
-  status: 'ready',
-  isDefault: true,
-};
-
-const loadFilesFromStorage = (): UploadedFile[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('Error loading files from localStorage:', e);
-  }
-  return [defaultFile];
-};
-
-const saveFilesToStorage = (files: UploadedFile[]) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
-  } catch (e) {
-    console.error('Error saving files to localStorage:', e);
-  }
-};
+interface Subscription {
+  plan: string;
+  status: string;
+  proofs_used_this_period: number;
+  proofs_included: number;
+}
 
 export default function Settings() {
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const { user, signOut } = useAuth();
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setFiles(loadFilesFromStorage());
-  }, []);
-
-  useEffect(() => {
-    if (files.length > 0) {
-      saveFilesToStorage(files);
+    if (user) {
+      loadData();
     }
-  }, [files]);
+  }, [user]);
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Load API keys
+      const { data: keys } = await supabase
+        .from('api_keys')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (keys) setApiKeys(keys);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFiles = e.target.files;
-    if (!uploadedFiles) return;
-
-    const newFiles: UploadedFile[] = Array.from(uploadedFiles).map((file) => ({
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-      status: 'pending' as const,
-    }));
-
-    setFiles((prev) => [...prev, ...newFiles]);
-    toast.success(`${newFiles.length} fichier(s) ajouté(s)`);
-
-    // Simulate processing
-    setTimeout(() => {
-      setFiles((prev) =>
-        prev.map((f) =>
-          newFiles.find((nf) => nf.id === f.id) ? { ...f, status: 'ready' as const } : f
-        )
-      );
-      toast.success('Fichiers prêts pour la production');
-    }, 1500);
-  };
-
-  const handleDeleteFile = (id: string) => {
-    setFiles((prev) => prev.filter((f) => f.id !== id));
-    toast.success('Fichier supprimé');
-  };
-
-  const handleDownloadFile = (file: UploadedFile) => {
-    if (file.isDefault) {
-      // Download from public folder
-      const link = document.createElement('a');
-      link.href = '/uploads/files.zip';
-      link.download = file.name;
-      link.click();
-      toast.success(`Téléchargement de ${file.name}`);
-    } else {
-      toast.info(`Téléchargement de ${file.name}... (métadonnées uniquement en mode démo)`);
+      // Load subscription
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .single();
+      if (sub) setSubscription(sub);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleCreateKey = async () => {
+    if (!user) return;
+    setCreatingKey(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/create-api-key`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: newKeyName || 'Default' }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to create key');
+        return;
+      }
+
+      const data = await res.json();
+      setNewKeyValue(data.apiKey);
+      setNewKeyName('');
+      toast.success('API key created! Copy it now — it won\'t be shown again.');
+      loadData();
+    } catch (err) {
+      toast.error('Failed to create API key');
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
+  const handleCopyKey = () => {
+    if (newKeyValue) {
+      navigator.clipboard.writeText(newKeyValue);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDeactivateKey = async (keyId: string) => {
+    await supabase
+      .from('api_keys')
+      .update({ is_active: false })
+      .eq('id', keyId);
+    toast.success('Key deactivated');
+    loadData();
+  };
+
+  const planColors: Record<string, string> = {
+    free: 'bg-muted text-muted-foreground',
+    payg: 'bg-blue-500/10 text-blue-600',
+    indie: 'bg-purple-500/10 text-purple-600',
+    startup: 'bg-primary/10 text-primary',
+    scale: 'bg-green-500/10 text-green-600',
+    enterprise: 'bg-amber-500/10 text-amber-600',
   };
 
   return (
-    <MainLayout title="Settings" subtitle="Gérer les fichiers de configuration pour la production">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Upload Section */}
+    <MainLayout title="Settings" subtitle="Manage your account, API keys, and billing">
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Profile */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-primary" />
-              Fichiers de Configuration
+              <User className="h-5 w-5 text-primary" />
+              Profile
             </CardTitle>
-            <CardDescription>
-              Uploadez vos fichiers de configuration avant le déploiement en production.
-              Ces fichiers seront stockés de manière sécurisée.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Upload Zone */}
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-              <Input
-                type="file"
-                multiple
-                accept=".zip,.json,.pem,.key,.cert,.env"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-              />
-              <Label
-                htmlFor="file-upload"
-                className="cursor-pointer flex flex-col items-center gap-3"
-              >
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileArchive className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">
-                    Glissez vos fichiers ici ou cliquez pour sélectionner
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Formats supportés: .zip, .json, .pem, .key, .cert, .env
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" className="mt-2">
-                  Sélectionner des fichiers
-                </Button>
-              </Label>
-            </div>
-
-            <Separator />
-
-            {/* Files List */}
-            <div className="space-y-3">
-              <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-                Fichiers stockés ({files.length})
-              </h3>
-
-              {files.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileArchive className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                  <p>Aucun fichier uploadé</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {files.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <FileArchive className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                                            {formatFileSize(file.size)} • Uploadé le{' '}
-                                            {new Date(file.uploadedAt).toLocaleDateString('fr-FR')}
-                                            {file.isDefault && ' • Fichier système'}
-                                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <Badge
-                          variant={file.status === 'ready' ? 'default' : 'secondary'}
-                          className={
-                            file.status === 'ready'
-                              ? 'bg-green-500/10 text-green-500 border-green-500/20'
-                              : file.status === 'error'
-                              ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                              : ''
-                          }
-                        >
-                          {file.status === 'ready' && (
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                          )}
-                          {file.status === 'error' && (
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {file.status === 'ready'
-                            ? 'Prêt'
-                            : file.status === 'pending'
-                            ? 'En cours...'
-                            : 'Erreur'}
-                        </Badge>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDownloadFile(file)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-xs text-muted-foreground">Email</Label>
+                <p className="font-medium">{user?.email || 'Not signed in'}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={signOut}>
+                Sign out
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Production Checklist */}
+        {/* Subscription */}
         <Card>
           <CardHeader>
-            <CardTitle>Checklist Production</CardTitle>
-            <CardDescription>
-              Vérifiez ces éléments avant le déploiement
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Plan
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {[
-                { label: 'Fichiers de configuration uploadés', done: files.length > 0 },
-                { label: 'Clés de signature configurées', done: true },
-                { label: 'Connexion blockchain testée', done: false },
-                { label: 'Certificats SSL valides', done: false },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/20"
-                >
-                  {item.done ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />
-                  )}
-                  <span
-                    className={item.done ? 'text-foreground' : 'text-muted-foreground'}
-                  >
-                    {item.label}
+            {subscription ? (
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge className={planColors[subscription.plan] || planColors.free}>
+                      {subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {subscription.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {subscription.proofs_used_this_period || 0} / {subscription.proofs_included === -1 ? 'Unlimited' : subscription.proofs_included || 100} proofs used
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => window.location.href = '/pricing'}>
+                  Upgrade
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* API Keys */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              API Keys
+            </CardTitle>
+            <CardDescription>
+              Use API keys to authenticate SDK and API requests
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Create new key */}
+            <div className="flex gap-3">
+              <Input
+                placeholder="Key name (e.g. Production, Staging)"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={handleCreateKey} disabled={creatingKey}>
+                {creatingKey ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
+                Create Key
+              </Button>
+            </div>
+
+            {/* New key display (shown once) */}
+            {newKeyValue && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-green-600" />
+                  <span className="font-semibold text-green-700 text-sm">
+                    New API key created — copy it now!
                   </span>
                 </div>
-              ))}
-            </div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-sidebar text-sidebar-foreground rounded p-2 text-sm font-mono break-all">
+                    {newKeyValue}
+                  </code>
+                  <Button variant="outline" size="sm" onClick={handleCopyKey}>
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This key will not be shown again. Store it securely.
+                </p>
+              </div>
+            )}
+
+            {/* Key list */}
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading keys...</p>
+            ) : apiKeys.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No API keys yet. Create one to get started.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {apiKeys.map((key) => (
+                  <div
+                    key={key.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${key.is_active ? 'bg-card' : 'bg-muted/50 opacity-60'}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{key.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {key.plan}
+                        </Badge>
+                        {!key.is_active && (
+                          <Badge variant="destructive" className="text-xs">Inactive</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <code className="text-xs text-muted-foreground">{key.key_prefix}...</code>
+                        <span className="text-xs text-muted-foreground">
+                          {key.proofs_used} proofs used
+                        </span>
+                        {key.last_used_at && (
+                          <span className="text-xs text-muted-foreground">
+                            Last: {new Date(key.last_used_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {key.is_active && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeactivateKey(key.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Usage example */}
+        <Card className="bg-muted/30">
+          <CardContent className="pt-6">
+            <h4 className="font-semibold mb-2">Quick integration</h4>
+            <pre className="bg-sidebar text-sidebar-foreground rounded-lg p-4 text-sm overflow-x-auto">
+{`import { ProofAI } from '@proofai/sdk'
+
+const proofai = new ProofAI({ apiKey: 'pk_live_xxx' })
+const cert = await proofai.certify(prompt, { provider: 'anthropic' })`}
+            </pre>
           </CardContent>
         </Card>
       </div>
