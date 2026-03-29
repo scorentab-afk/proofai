@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink, FileDown, Scale, Building2 } from 'lucide-react';
+import { Shield, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink, FileDown, Scale, Building2, Landmark, Radio, Heart, Gavel, Lock, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -50,28 +50,37 @@ interface BulkResult {
   generatedAt: string;
 }
 
-const REGULATOR_INFO = [
+// Coordination nationale
+const COORDINATION = [
   {
     name: 'DGCCRF',
-    role: 'National AI Act contact point',
-    sector: 'General commerce & consumer products',
+    role: 'Point de contact unique avec la Commission europeenne',
+    detail: 'Coordination des autorites de surveillance du marche',
     icon: Building2,
-    message: 'The DGCCRF is the primary enforcement authority for AI Act compliance in France.',
   },
   {
-    name: 'CNIL',
-    role: 'Data protection & biometric AI',
-    sector: 'Personal data, recruitment, education, justice',
-    icon: Shield,
-    message: 'The CNIL supervises AI systems processing personal data under both GDPR and AI Act.',
+    name: 'DGE',
+    role: 'Coordination strategique',
+    detail: 'Represente la France au Comite europeen de l\'IA',
+    icon: Landmark,
   },
-  {
-    name: 'ACPR',
-    role: 'Financial AI systems',
-    sector: 'Credit scoring, insurance, banking',
-    icon: Scale,
-    message: 'The ACPR controls high-risk AI systems in financial services (Annex III).',
-  },
+];
+
+// Regulateurs par secteur
+const REGULATORS_BY_SECTOR = [
+  { name: 'CNIL', domain: 'Biometrie, emploi/recrutement, education, acces services essentiels, justice, migration + RGPD', icon: Shield },
+  { name: 'ACPR', domain: 'Scoring credit, solvabilite, assurance vie/sante, institutions financieres', icon: Scale },
+  { name: 'ARCOM', domain: 'Contenus synthetiques, deepfakes, chatbots grand public, influence processus democratiques', icon: Radio },
+  { name: 'HAS', domain: 'Dispositifs medicaux avec IA', icon: Heart },
+  { name: 'ANSM', domain: 'Medicaments et produits de sante avec IA', icon: Heart },
+  { name: 'Conseil d\'Etat / Cour de Cassation / Cour des Comptes', domain: 'IA utilisee par les autorites judiciaires', icon: Gavel },
+  { name: 'Hauts fonctionnaires de defense', domain: 'Infrastructures critiques, securite nationale', icon: Lock },
+];
+
+// Appui technique
+const TECHNICAL_SUPPORT = [
+  { name: 'ANSSI', role: 'Cybersecurite des systemes IA', icon: Lock },
+  { name: 'PEReN', role: 'Expertise technique numerique pour toutes les autorites', icon: Cpu },
 ];
 
 export default function RegulatorPortal() {
@@ -170,26 +179,77 @@ export default function RegulatorPortal() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        {/* Regulator info cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {REGULATOR_INFO.map((reg) => {
-            const Icon = reg.icon;
-            return (
-              <motion.div key={reg.name} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className="h-full">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Icon className="h-5 w-5 text-primary" />
-                      <span className="font-bold">{reg.name}</span>
+        {/* Regulator directory */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Landmark className="h-5 w-5 text-primary" />
+              Les regulateurs AI Act en France
+            </CardTitle>
+            <CardDescription>
+              Autorites competentes pour le controle des systemes d'IA au titre du Reglement europeen
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Coordination nationale */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Coordination nationale</h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                {COORDINATION.map((c) => {
+                  const Icon = c.icon;
+                  return (
+                    <div key={c.name} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                      <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-semibold text-sm">{c.name}</span>
+                        <p className="text-xs text-muted-foreground">{c.role}</p>
+                        <p className="text-xs text-muted-foreground">{c.detail}</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1">{reg.role}</p>
-                    <p className="text-xs text-muted-foreground">{reg.sector}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Par secteur */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Par secteur / domaine</h4>
+              <div className="space-y-2">
+                {REGULATORS_BY_SECTOR.map((r) => {
+                  const Icon = r.icon;
+                  return (
+                    <div key={r.name} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                      <Icon className="h-4 w-4 text-primary mt-1 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="font-semibold text-sm">{r.name}</span>
+                        <p className="text-xs text-muted-foreground">{r.domain}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Appui technique */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Appui technique mutualise</h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                {TECHNICAL_SUPPORT.map((t) => {
+                  const Icon = t.icon;
+                  return (
+                    <div key={t.name} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                      <Icon className="h-4 w-4 text-primary shrink-0" />
+                      <div>
+                        <span className="font-semibold text-sm">{t.name}</span>
+                        <p className="text-xs text-muted-foreground">{t.role}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Regulator auth */}
         <Card className="border-primary/30 bg-primary/5">
