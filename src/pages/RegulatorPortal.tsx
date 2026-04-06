@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink, FileDown, Scale, Building2, Landmark, Radio, Heart, Gavel, Lock, Cpu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { Shield, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:54321/functions/v1';
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -34,497 +26,304 @@ interface ComplianceReport {
     explorerUrl: string;
     verifiableByAnyone: boolean;
   } | null;
-  timeline: Array<{ event: string; timestamp: string; hash: string }>;
-  regulators: Array<{ name: string; jurisdiction: string; relevance: string }>;
   generatedAt: string;
   disclaimer: string;
   error?: string;
 }
 
-interface BulkResult {
-  mode: string;
-  total: number;
-  passed: number;
-  failed: number;
-  reports: ComplianceReport[];
-  generatedAt: string;
-}
-
-// Coordination nationale
-const COORDINATION = [
-  {
-    name: 'DGCCRF',
-    role: 'Point de contact unique avec la Commission europeenne',
-    detail: 'Coordination des autorites de surveillance du marche',
-    icon: Building2,
-  },
-  {
-    name: 'DGE',
-    role: 'Coordination strategique',
-    detail: 'Represente la France au Comite europeen de l\'IA',
-    icon: Landmark,
-  },
-];
-
-// Regulateurs par secteur
-const REGULATORS_BY_SECTOR = [
-  { name: 'CNIL', domain: 'Biometrie, emploi/recrutement, education, acces services essentiels, justice, migration + RGPD', icon: Shield },
-  { name: 'ACPR', domain: 'Scoring credit, solvabilite, assurance vie/sante, institutions financieres', icon: Scale },
-  { name: 'ARCOM', domain: 'Contenus synthetiques, deepfakes, chatbots grand public, influence processus democratiques', icon: Radio },
-  { name: 'HAS', domain: 'Dispositifs medicaux avec IA', icon: Heart },
-  { name: 'ANSM', domain: 'Medicaments et produits de sante avec IA', icon: Heart },
-  { name: 'Conseil d\'Etat / Cour de Cassation / Cour des Comptes', domain: 'IA utilisee par les autorites judiciaires', icon: Gavel },
-  { name: 'Hauts fonctionnaires de defense', domain: 'Infrastructures critiques, securite nationale', icon: Lock },
-];
-
-// Appui technique
-const TECHNICAL_SUPPORT = [
-  { name: 'ANSSI', role: 'Cybersecurite des systemes IA', icon: Lock },
-  { name: 'PEReN', role: 'Expertise technique numerique pour toutes les autorites', icon: Cpu },
-];
-
 export default function RegulatorPortal() {
-  const [regulatorToken, setRegulatorToken] = useState('');
-  const [bundleId, setBundleId] = useState('');
-  const [txHash, setTxHash] = useState('');
-  const [bulkIds, setBulkIds] = useState('');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [report, setReport] = useState<(ComplianceReport & { content?: { promptContent: string | null; aiResponse: string | null; accessLevel: string; hint?: string } }) | null>(null);
-  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
+  const [report, setReport] = useState<ComplianceReport | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const callRegulatorAPI = async (body: Record<string, unknown>) => {
-    const res = await fetch(`${API_BASE}/regulator-verify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(ANON_KEY ? { 'Authorization': `Bearer ${ANON_KEY}` } : {}),
-        ...(regulatorToken ? { 'x-regulator-token': regulatorToken } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`API error ${res.status}`);
-    return res.json();
-  };
-
-  const handleSingleVerify = async () => {
-    if (!bundleId && !txHash) {
-      toast.error('Enter a bundle ID or transaction hash');
-      return;
-    }
+  const handleVerify = async () => {
+    const q = query.trim();
+    if (!q) return;
     setLoading(true);
-    setBulkResult(null);
-    try {
-      const result = await callRegulatorAPI({
-        bundleId: bundleId || undefined,
-        transactionHash: txHash || undefined,
-      });
-      setReport(result);
-      if (result.overallCompliant) {
-        toast.success('Compliance verified');
-      } else if (!result.found) {
-        toast.error('Bundle not found');
-      } else {
-        toast.error('Compliance issues detected');
-      }
-    } catch (err) {
-      toast.error('Verification failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBulkVerify = async () => {
-    const ids = bulkIds.split('\n').map(s => s.trim()).filter(Boolean);
-    if (ids.length === 0) {
-      toast.error('Enter at least one bundle ID');
-      return;
-    }
-    setLoading(true);
+    setErrorMsg(null);
     setReport(null);
+
+    const isTxHash = q.startsWith('0x');
     try {
-      const result = await callRegulatorAPI({ bundleIds: ids });
-      setBulkResult(result);
-      toast.success(`${result.passed}/${result.total} bundles compliant`);
-    } catch (err) {
-      toast.error('Bulk verification failed');
+      const res = await fetch(`${API_BASE}/regulator-verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(ANON_KEY ? { Authorization: `Bearer ${ANON_KEY}` } : {}),
+        },
+        body: JSON.stringify(
+          isTxHash ? { transactionHash: q } : { bundleId: q }
+        ),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: ComplianceReport = await res.json();
+      if (!data.found) {
+        setErrorMsg('Aucun enregistrement trouvé pour cet identifiant.');
+      } else {
+        setReport(data);
+      }
+    } catch {
+      setErrorMsg('Erreur de vérification. Vérifiez l\'identifiant et réessayez.');
     } finally {
       setLoading(false);
     }
   };
 
-  const statusIcon = (status: string) => {
-    if (status === 'pass') return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-    if (status === 'fail') return <XCircle className="h-5 w-5 text-red-500" />;
-    return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleVerify();
   };
+
+  const passCount = report?.checks.filter(c => c.status === 'pass').length ?? 0;
+  const totalCount = report?.checks.length ?? 0;
+  const hasEd25519 = report?.checks.some(c =>
+    c.article.toLowerCase().includes('19') && c.evidence?.toLowerCase().includes('ed25519') && c.status === 'pass'
+  );
+  const networkLabel = report?.blockchainProof?.network
+    ? report.blockchainProof.network.charAt(0).toUpperCase() + report.blockchainProof.network.slice(1)
+    : 'Polygon Mainnet';
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header — no sidebar, standalone portal */}
-      <header className="border-b bg-card/50 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+    <div className="min-h-screen bg-[#F8FAFB]">
+      {/* ── HEADER ─────────────────────────────────────────── */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-3xl mx-auto px-6 py-8 text-center">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-xl bg-[#185FA5] flex items-center justify-center shrink-0">
               <Shield className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h1 className="font-bold text-lg">ProofAI — Regulator Portal</h1>
-              <p className="text-xs text-muted-foreground">Independent AI compliance verification</p>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Portail Régulateur</h1>
           </div>
-          <p className="text-xs text-muted-foreground hidden md:block">
-            No account required. No login. Just math.
+          <p className="text-sm text-gray-500 mb-4">
+            Vérification indépendante des preuves IA — EU AI Act Article 12 &amp; 19
           </p>
+          <span className="inline-flex items-center gap-1.5 bg-[#185FA5] text-white text-xs font-medium px-3 py-1.5 rounded-full">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+            Accès public · Sans compte · Sans intermédiaire
+          </span>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        {/* Regulator directory */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Landmark className="h-5 w-5 text-primary" />
-              Les regulateurs AI Act en France
-            </CardTitle>
-            <CardDescription>
-              Autorites competentes pour le controle des systemes d'IA au titre du Reglement europeen
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Coordination nationale */}
-            <div>
-              <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Coordination nationale</h4>
-              <div className="grid gap-3 md:grid-cols-2">
-                {COORDINATION.map((c) => {
-                  const Icon = c.icon;
-                  return (
-                    <div key={c.name} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
-                      <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                      <div>
-                        <span className="font-semibold text-sm">{c.name}</span>
-                        <p className="text-xs text-muted-foreground">{c.role}</p>
-                        <p className="text-xs text-muted-foreground">{c.detail}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+      <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+        {/* ── REGULATOR DIRECTORY ────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+          <span className="shrink-0">Portail accessible à :</span>
+          {['CNIL', 'ACPR', 'ARCOM', 'DGCCRF', 'PEReN', 'DGE'].map(name => (
+            <span key={name} className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">
+              {name}
+            </span>
+          ))}
+        </div>
 
-            {/* Par secteur */}
-            <div>
-              <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Par secteur / domaine</h4>
-              <div className="space-y-2">
-                {REGULATORS_BY_SECTOR.map((r) => {
-                  const Icon = r.icon;
-                  return (
-                    <div key={r.name} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
-                      <Icon className="h-4 w-4 text-primary mt-1 shrink-0" />
-                      <div className="min-w-0">
-                        <span className="font-semibold text-sm">{r.name}</span>
-                        <p className="text-xs text-muted-foreground">{r.domain}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Appui technique */}
-            <div>
-              <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Appui technique mutualise</h4>
-              <div className="grid gap-3 md:grid-cols-2">
-                {TECHNICAL_SUPPORT.map((t) => {
-                  const Icon = t.icon;
-                  return (
-                    <div key={t.name} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                      <Icon className="h-4 w-4 text-primary shrink-0" />
-                      <div>
-                        <span className="font-semibold text-sm">{t.name}</span>
-                        <p className="text-xs text-muted-foreground">{t.role}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Regulator auth */}
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <Shield className="h-8 w-8 text-primary shrink-0" />
-              <div className="flex-1 space-y-2">
-                <Label className="text-sm font-semibold">Regulator Access Token</Label>
-                <Input
-                  type="password"
-                  placeholder="reg_dgccrf_a1b2c3d4e5f6..."
-                  value={regulatorToken}
-                  onChange={(e) => setRegulatorToken(e.target.value)}
-                  className="font-mono"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {regulatorToken
-                    ? 'Token provided — full content access enabled'
-                    : 'Without a token, you can verify compliance checks but cannot view prompt/response content'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Verification tabs */}
-        <Tabs defaultValue="single">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="single">Single Verification</TabsTrigger>
-            <TabsTrigger value="bulk">Bulk Audit</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="single" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="h-5 w-5 text-primary" />
-                  Verify AI Evidence Bundle
-                </CardTitle>
-                <CardDescription>
-                  Enter a bundle ID or Polygon transaction hash to verify compliance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Bundle ID</Label>
-                  <Input
-                    placeholder="bnd_8019b37a7f44_..."
-                    value={bundleId}
-                    onChange={(e) => setBundleId(e.target.value)}
-                    className="font-mono"
-                  />
-                </div>
-                <div className="text-center text-xs text-muted-foreground">or</div>
-                <div className="space-y-2">
-                  <Label>Polygon Transaction Hash</Label>
-                  <Input
-                    placeholder="0xbbf92ceb6354a066..."
-                    value={txHash}
-                    onChange={(e) => setTxHash(e.target.value)}
-                    className="font-mono"
-                  />
-                </div>
-                <Button onClick={handleSingleVerify} className="w-full" disabled={loading}>
-                  <Search className="mr-2 h-4 w-4" />
-                  {loading ? 'Verifying...' : 'Verify Compliance'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="bulk" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Scale className="h-5 w-5 text-primary" />
-                  Bulk Compliance Audit
-                </CardTitle>
-                <CardDescription>
-                  Paste multiple bundle IDs (one per line) to audit an organization
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea
-                  placeholder="bnd_xxx_111&#10;bnd_xxx_222&#10;bnd_xxx_333"
-                  value={bulkIds}
-                  onChange={(e) => setBulkIds(e.target.value)}
-                  className="font-mono min-h-[150px]"
-                />
-                <Button onClick={handleBulkVerify} className="w-full" disabled={loading}>
-                  <Scale className="mr-2 h-4 w-4" />
-                  {loading ? 'Auditing...' : `Audit ${bulkIds.split('\n').filter(Boolean).length || 0} bundles`}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Single report */}
-        <AnimatePresence>
-          {report && report.found && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
+        {/* ── SEARCH BOX ─────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
+            Bundle ID ou Hash de transaction Polygon
+          </label>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              className="flex-1 h-12 rounded-xl border border-gray-300 px-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#185FA5] focus:border-transparent placeholder:text-gray-400 placeholder:font-sans"
+              placeholder="bnd_8019b37a7f44_… ou 0xbbf92ceb6354…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button
+              onClick={handleVerify}
+              disabled={loading || !query.trim()}
+              className="h-12 px-6 rounded-xl text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ backgroundColor: '#185FA5' }}
             >
-              {/* Overall status */}
-              <Card className={`overflow-hidden ${report.overallCompliant ? 'border-green-500/50' : 'border-red-500/50'}`}>
-                <div className={`h-2 ${report.overallCompliant ? 'bg-gradient-to-r from-green-500 to-primary' : 'bg-red-500'}`} />
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className={`h-16 w-16 rounded-2xl flex items-center justify-center ${report.overallCompliant ? 'bg-green-500' : 'bg-red-500'}`}>
-                      {report.overallCompliant
-                        ? <CheckCircle2 className="h-8 w-8 text-white" />
-                        : <XCircle className="h-8 w-8 text-white" />
-                      }
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold">
-                        {report.overallCompliant ? 'Compliant' : 'Non-Compliant'}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">{report.complianceScore}</p>
-                      <p className="text-xs text-muted-foreground">Bundle: {report.bundleId}</p>
-                    </div>
+              <Search className="h-4 w-4" />
+              {loading ? 'Vérification…' : 'Vérifier'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── ERROR STATE ─────────────────────────────────────── */}
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-center gap-3 text-red-700 text-sm">
+            <XCircle className="h-5 w-5 shrink-0" />
+            {errorMsg}
+          </div>
+        )}
+
+        {/* ── RESULT ─────────────────────────────────────────── */}
+        <AnimatePresence>
+          {report && (
+            <motion.div
+              key="result"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-5"
+            >
+              {/* Verdict card */}
+              <div
+                className="rounded-2xl border p-6"
+                style={{
+                  background: report.overallCompliant ? '#EAF3DE' : '#FEF2F2',
+                  borderColor: report.overallCompliant ? '#B6D48E' : '#FECACA',
+                }}
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: report.overallCompliant ? '#3B6D11' : '#DC2626' }}
+                  >
+                    {report.overallCompliant
+                      ? <CheckCircle2 className="h-7 w-7 text-white" />
+                      : <XCircle className="h-7 w-7 text-white" />
+                    }
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Compliance checks */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>EU AI Act Compliance Checks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {report.checks.map((check, i) => (
-                      <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border ${
-                        check.status === 'pass' ? 'bg-green-500/5 border-green-500/20' :
-                        check.status === 'fail' ? 'bg-red-500/5 border-red-500/20' :
-                        'bg-yellow-500/5 border-yellow-500/20'
-                      }`}>
-                        {statusIcon(check.status)}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{check.article}</span>
-                            <span className="text-sm font-medium">{check.requirement}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">{check.evidence}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Blockchain proof */}
-              {report.blockchainProof && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Blockchain Verification</CardTitle>
-                    <CardDescription>
-                      This proof can be independently verified on Polygonscan — no account required
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="bg-muted/50 rounded-lg p-3">
-                        <Label className="text-xs text-muted-foreground">Network</Label>
-                        <p className="font-semibold capitalize">{report.blockchainProof.network}</p>
-                      </div>
-                      <div className="bg-muted/50 rounded-lg p-3">
-                        <Label className="text-xs text-muted-foreground">Block</Label>
-                        <p className="font-mono font-semibold">#{report.blockchainProof.blockNumber}</p>
-                      </div>
-                    </div>
-                    <div className="bg-sidebar text-sidebar-foreground rounded-lg p-3 font-mono text-sm break-all">
-                      {report.blockchainProof.transactionHash}
-                    </div>
-                    <Button variant="outline" className="w-full" asChild>
-                      <a href={report.blockchainProof.explorerUrl} target="_blank" rel="noopener noreferrer">
-                        Verify on Polygonscan
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </a>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Content — only with regulator token */}
-              {report.content?.accessLevel === 'full' && report.content.promptContent && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-primary" />
-                      Evidence Content
-                      <Badge variant="outline" className="ml-2 text-xs">Regulator Access</Badge>
-                    </CardTitle>
-                    <CardDescription>
-                      Full prompt and AI response — visible only with authenticated regulator token
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Prompt</Label>
-                      <div className="mt-1 bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap border">
-                        {report.content.promptContent}
-                      </div>
-                    </div>
-                    {report.content.aiResponse && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground">AI Response</Label>
-                        <div className="mt-1 bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap border">
-                          {report.content.aiResponse}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {report.content?.accessLevel === 'public' && (
-                <Card className="border-dashed">
-                  <CardContent className="pt-6 text-center">
-                    <Shield className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      {report.content.hint}
+                  <div>
+                    <p
+                      className="text-xl font-bold"
+                      style={{ color: report.overallCompliant ? '#3B6D11' : '#991B1B' }}
+                    >
+                      {report.overallCompliant ? 'Conformité vérifiée' : 'Non conforme'}
                     </p>
-                  </CardContent>
-                </Card>
+                    <p className="text-sm mt-0.5" style={{ color: report.overallCompliant ? '#4A7F1E' : '#B91C1C' }}>
+                      Bundle : <span className="font-mono">{report.bundleId}</span>
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: report.overallCompliant ? '#5A8F28' : '#DC2626' }}>
+                      Vérifié le {new Date(report.generatedAt).toLocaleString('fr-FR', {
+                        dateStyle: 'long',
+                        timeStyle: 'short',
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 metric cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  {
+                    label: 'Articles vérifiés',
+                    value: `${passCount}/${totalCount}`,
+                  },
+                  {
+                    label: 'Score cohérence',
+                    value: report.complianceScore?.replace('Score: ', '') ?? '—',
+                  },
+                  {
+                    label: 'Signature',
+                    value: hasEd25519 ? 'Ed25519' : '—',
+                  },
+                  {
+                    label: 'Réseau',
+                    value: networkLabel,
+                  },
+                ].map(card => (
+                  <div key={card.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">{card.label}</p>
+                    <p className="text-lg font-bold text-gray-900">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Article-by-article checks */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="text-sm font-semibold text-gray-800">Vérifications article par article</h2>
+                </div>
+                <ul className="divide-y divide-gray-100">
+                  {report.checks.map((check, i) => (
+                    <li key={i} className="flex items-start gap-4 px-6 py-4">
+                      <div className="mt-0.5 shrink-0">
+                        {check.status === 'pass'
+                          ? <CheckCircle2 className="h-5 w-5 text-[#3B6D11]" />
+                          : check.status === 'fail'
+                          ? <XCircle className="h-5 w-5 text-red-500" />
+                          : <AlertTriangle className="h-5 w-5 text-amber-500" />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                          <span className="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                            {check.article}
+                          </span>
+                          <span className="text-sm font-medium text-gray-800">{check.requirement}</span>
+                        </div>
+                        <p className="text-xs text-gray-500">{check.evidence}</p>
+                      </div>
+                      <span
+                        className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
+                        style={
+                          check.status === 'pass'
+                            ? { background: '#EAF3DE', color: '#3B6D11' }
+                            : check.status === 'fail'
+                            ? { background: '#FEF2F2', color: '#991B1B' }
+                            : { background: '#FFFBEB', color: '#92400E' }
+                        }
+                      >
+                        {check.status === 'pass' ? 'Conforme' : check.status === 'fail' ? 'Non conforme' : 'N/A'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Blockchain record */}
+              {report.blockchainProof && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-sm font-semibold text-gray-800">Enregistrement blockchain</h2>
+                  </div>
+                  <div className="px-6 py-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Réseau</p>
+                        <p className="text-sm font-semibold text-gray-800 capitalize">
+                          {report.blockchainProof.network}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Statut</p>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+                          style={{ background: '#EAF3DE', color: '#3B6D11' }}>
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#3B6D11]" />
+                          Ancré
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Hash de transaction</p>
+                      <p className="font-mono text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 break-all text-gray-700">
+                        {report.blockchainProof.transactionHash}
+                      </p>
+                    </div>
+                    <a
+                      href={report.blockchainProof.explorerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full h-11 rounded-xl border border-[#185FA5] text-[#185FA5] text-sm font-semibold hover:bg-[#185FA5]/5 transition-colors"
+                    >
+                      Vérifier sur Polygonscan
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
               )}
 
               {/* Disclaimer */}
-              <p className="text-xs text-muted-foreground text-center">{report.disclaimer}</p>
+              <p className="text-xs text-gray-400 text-center pb-2">{report.disclaimer}</p>
             </motion.div>
           )}
         </AnimatePresence>
+      </main>
 
-        {/* Bulk results */}
-        {bulkResult && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Bulk Audit Results</CardTitle>
-                <CardDescription>
-                  {bulkResult.passed}/{bulkResult.total} bundles compliant
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {bulkResult.reports.map((r, i) => (
-                    <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${r.overallCompliant ? 'border-green-500/20' : 'border-red-500/20'}`}>
-                      {r.overallCompliant
-                        ? <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        : <XCircle className="h-5 w-5 text-red-500" />
-                      }
-                      <code className="text-xs flex-1">{r.bundleId}</code>
-                      <span className="text-xs text-muted-foreground">{r.complianceScore}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Footer */}
-        <div className="text-center pt-8 pb-12 border-t">
-          <p className="text-sm text-muted-foreground mb-2">
-            ProofAI — Cryptographic proof that AI thought before it answered
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Open source (MIT) — <a href="https://github.com/proof-ai/proofai" className="underline">github.com/proof-ai/proofai</a>
+      {/* ── FOOTER ─────────────────────────────────────────── */}
+      <footer className="border-t border-gray-200 bg-white mt-16">
+        <div className="max-w-3xl mx-auto px-6 py-6 text-center">
+          <p className="text-xs text-gray-400">
+            ProofAI — Preuve cryptographique que l'IA a réfléchi avant de répondre
           </p>
         </div>
-      </main>
+      </footer>
     </div>
   );
 }
