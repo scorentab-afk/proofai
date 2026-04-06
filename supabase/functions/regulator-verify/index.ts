@@ -269,7 +269,7 @@ async function generateComplianceReport(
       network: anchor.network,
       transactionHash: anchor.transaction_hash,
       blockNumber: anchor.block_number,
-      explorerUrl: `https://amoy.polygonscan.com/tx/${anchor.transaction_hash}`,
+      explorerUrl: `https://polygonscan.com/tx/${anchor.transaction_hash}`,
       verifiableByAnyone: true,
     } : null,
     timeline: bundle.timeline,

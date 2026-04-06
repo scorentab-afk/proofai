@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Article%2012%20Ready-blue.svg)](https://artificialintelligenceact.eu/article/12/)
-[![Polygon Amoy](https://img.shields.io/badge/Blockchain-Polygon%20Amoy-8247E5.svg)](https://amoy.polygonscan.com)
+[![Polygon PoS](https://img.shields.io/badge/Blockchain-Polygon%20PoS-8247E5.svg)](https://polygonscan.com)
 [![Ed25519](https://img.shields.io/badge/Crypto-Ed25519-orange.svg)](https://github.com/paulmillr/noble-ed25519)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E.svg)](https://supabase.com)
 
@@ -119,7 +119,7 @@ Your AI call
 Certificate PDF with Polygonscan URL
 ```
 
-Anyone can verify at `https://amoy.polygonscan.com/tx/[tx-hash]`
+Anyone can verify at `https://polygonscan.com/tx/[tx-hash]`
 No account. No login. No middleman. Just math.
 
 ---
@@ -159,7 +159,7 @@ const cert = await proofai.certify('Analyze this contract for legal risks', {
 
 console.log(cert.verified)        // true
 console.log(cert.bundleHash)      // sha256 hash
-console.log(cert.explorerUrl)     // https://amoy.polygonscan.com/tx/0x...
+console.log(cert.explorerUrl)     // https://polygonscan.com/tx/0x...
 
 // Human oversight (Art. 14)
 await proofai.review(cert.bundleId, 'dpo@company.com', 'compliance_officer', 'approved')
@@ -209,7 +209,7 @@ Open `http://localhost:8080`
 Frontend     React 18 + TypeScript + Tailwind + shadcn/ui + Framer Motion
 Backend      Supabase Edge Functions (Deno)
 Crypto       @noble/ed25519 — real Ed25519 signatures
-Blockchain   Polygon Amoy testnet via Alchemy
+Blockchain   Polygon PoS mainnet via Alchemy
 AI           Claude (Anthropic) · Gemini (Google) · GPT (OpenAI)
 Graphs       React Flow — cognitive knowledge graph
 PDF          jsPDF — exportable compliance certificate

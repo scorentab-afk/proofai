@@ -47,8 +47,8 @@ serve(async (req) => {
       );
     }
 
-    // Polygon Amoy testnet RPC
-    const rpcUrl = `https://polygon-amoy.g.alchemy.com/v2/${alchemyKey}`;
+    // Polygon mainnet RPC
+    const rpcUrl = `https://polygon-mainnet.g.alchemy.com/v2/${alchemyKey}`;
 
     // Compute the data payload — the bundle hash to anchor
     const dataHash = await sha256(`proofai_anchor_${bundleId}_${Date.now()}`);
@@ -86,7 +86,7 @@ serve(async (req) => {
     const gasPriceData = await gasPriceRes.json();
 
     // Send raw transaction with data field containing the bundle hash
-    // For Amoy testnet, we send a self-transaction with data
+    // Send a self-transaction with data
     const address = await getAddress(cleanKey);
     const nonce = nonceData.result;
     const gasPrice = gasPriceData.result;
@@ -151,7 +151,7 @@ serve(async (req) => {
 
     const explorerBase =
       network === "polygon"
-        ? "https://amoy.polygonscan.com/tx"
+        ? "https://polygonscan.com/tx"
         : "https://etherscan.io/tx";
 
     // Store in Supabase if available

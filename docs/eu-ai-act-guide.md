@@ -113,7 +113,7 @@ When a regulator asks: *"How do I know these logs haven't been modified?"*
 **Your answer:**
 1. Every log is signed with Ed25519 — the signature breaks if any byte changes
 2. The bundle hash is anchored on Polygon blockchain — immutable, public, verifiable
-3. Anyone can verify at `https://amoy.polygonscan.com/tx/[tx-hash]`
+3. Anyone can verify at `https://polygonscan.com/tx/[tx-hash]`
 4. No account needed. No login. No middleman. Just math.
 
 This is not a declaration of compliance. It's a mathematical proof.

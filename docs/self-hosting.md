@@ -98,4 +98,4 @@ const proofai = new ProofAI({
 node -e "const c=require('crypto');console.log('0x'+c.randomBytes(32).toString('hex'))"
 ```
 
-Fund it with Amoy testnet MATIC from a faucet.
+Fund it with MATIC on Polygon mainnet.

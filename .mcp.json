@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "proofai": {
+      "command": "node",
+      "args": ["/Users/vrt/.openclaw/workspace/skills/proofai/dist/index.js"],
+      "env": {
+        "PROOFAI_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwemdiYWp2d3p5a3lncnh4cndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MjU4ODksImV4cCI6MjA5MDIwMTg4OX0.iUxPxRxk8G2kNrtLnL_pSB-V7DE7cSclfpmsdP-FIJg"
+      }
+    }
+  }
+}

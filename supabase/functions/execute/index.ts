@@ -33,7 +33,7 @@ async function callAnthropic(prompt: string, options: Record<string, unknown>): 
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: (options.modelId as string) || "claude-sonnet-4-20250514",
+      model: (!options.modelId || options.modelId === "auto") ? "claude-sonnet-4-20250514" : (options.modelId as string),
       max_tokens: (options.maxTokens as number) || 1024,
       temperature: (options.temperature as number) ?? 0.7,
       messages: [{ role: "user", content: prompt }],
@@ -71,7 +71,7 @@ async function callOpenAI(prompt: string, options: Record<string, unknown>): Pro
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: (options.modelId as string) || "gpt-4o",
+      model: (!options.modelId || options.modelId === "auto") ? "gpt-4o" : (options.modelId as string),
       max_tokens: (options.maxTokens as number) || 1024,
       temperature: (options.temperature as number) ?? 0.7,
       messages: [{ role: "user", content: prompt }],
@@ -102,7 +102,7 @@ async function callGemini(prompt: string, options: Record<string, unknown>): Pro
   const apiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!apiKey) throw new Error("GOOGLE_AI_API_KEY not set");
 
-  const model = (options.modelId as string) || "gemini-2.0-flash";
+  const model = (!options.modelId || options.modelId === "auto") ? "gemini-2.0-flash" : (options.modelId as string);
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -157,13 +157,17 @@ serve(async (req) => {
       });
     }
 
-    const { promptRef, options } = await req.json();
+    const body = await req.json();
+    const { promptRef, prompt, originalPrompt, options } = body;
     if (!promptRef || !options?.provider) {
       return new Response(
         JSON.stringify({ error: "promptRef and options.provider are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Use the original prompt text if provided, otherwise fall back to promptRef
+    const promptText = prompt || originalPrompt || options?.originalPrompt || promptRef;
 
     const startTime = Date.now();
     const provider = options.provider;
@@ -173,11 +177,11 @@ serve(async (req) => {
     let result: { output: string; trace: ReasoningStep[]; tokens: { prompt: number; completion: number; total: number } };
 
     if (isGemini) {
-      result = await callGemini(promptRef, options);
+      result = await callGemini(promptText, options);
     } else if (isClaude) {
-      result = await callAnthropic(promptRef, options);
+      result = await callAnthropic(promptText, options);
     } else {
-      result = await callOpenAI(promptRef, options);
+      result = await callOpenAI(promptText, options);
     }
 
     const latency = Date.now() - startTime;

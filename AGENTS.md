@@ -4,7 +4,7 @@
 - Frontend: React + TypeScript + Vite + Tailwind + shadcn/ui
 - Backend: Supabase Edge Functions (Deno)
 - Crypto: @noble/ed25519
-- Blockchain: Polygon Amoy via Alchemy
+- Blockchain: Polygon PoS mainnet via Alchemy
 
 ## Rules
 - NEVER modify src/components/ or src/pages/

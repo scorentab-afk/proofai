@@ -7,7 +7,7 @@ Cryptographic proof that AI thought before it answered. EU AI Act Article 12 com
 This skill is flagged by VirusTotal because it:
 - Handles Ed25519 cryptographic keys (by design)
 - Calls external APIs (Polygon blockchain, Supabase)
-- Anchors data on-chain (Polygon Amoy)
+- Anchors data on-chain (Polygon PoS mainnet)
 
 This is expected behavior for a blockchain compliance tool.
 Review the source: https://github.com/proof-ai/proofai

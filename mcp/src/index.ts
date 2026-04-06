@@ -240,7 +240,7 @@ server.tool(
     txHash: z.string().describe("The Polygon transaction hash (0x...)"),
   },
   async ({ txHash }) => {
-    const url = `https://amoy.polygonscan.com/tx/${txHash}`;
+    const url = `https://polygonscan.com/tx/${txHash}`;
     return {
       content: [{
         type: "text" as const,
