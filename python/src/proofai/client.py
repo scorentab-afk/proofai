@@ -237,6 +237,7 @@ class ProofAI:
         signature_id: str,
         cognitive_hash: str,
         options: Optional[BundleOptions] = None,
+        analysis_data: Optional["AnalyzeResult"] = None,
     ) -> BundleResult:
         """Assemble all artifacts into a tamper-evident evidence bundle."""
         body: Dict[str, Any] = {
@@ -253,6 +254,34 @@ class ProofAI:
                 body["sessionId"] = options.session_id
             if options.rag_sources:
                 body["ragSources"] = options.rag_sources
+        if analysis_data is not None:
+            body["analysisData"] = {
+                "id": analysis_data.id,
+                "executionId": analysis_data.execution_id,
+                "nodes": [
+                    {
+                        "id": n.id, "label": n.label, "type": n.type,
+                        "weight": n.weight, "content": n.content,
+                        "hash": n.hash, "traceSource": n.trace_source,
+                    }
+                    for n in analysis_data.nodes
+                ],
+                "edges": [
+                    {"source": e.source, "target": e.target, "label": e.label, "weight": e.weight}
+                    for e in analysis_data.edges
+                ],
+                "metrics": {
+                    "nodeCount": analysis_data.metrics.node_count,
+                    "edgeCount": analysis_data.metrics.edge_count,
+                    "consistencyScore": analysis_data.metrics.consistency_score,
+                    "complexityScore": analysis_data.metrics.complexity_score,
+                },
+                "cognitiveHash": analysis_data.cognitive_hash,
+                "traceQuality": analysis_data.trace_quality,
+                "traceSource": analysis_data.trace_source,
+                **({"disclaimer": analysis_data.disclaimer} if analysis_data.disclaimer else {}),
+                "timestamp": analysis_data.timestamp,
+            }
         data = self._call("bundle", body)
         return BundleResult.from_dict(data)
 
@@ -358,13 +387,14 @@ class ProofAI:
         # 4. Sign
         signature = self.sign(execution)
 
-        # 5. Bundle
+        # 5. Bundle — pass full analysis so nodes are persisted
         evidence_bundle = self.bundle(
             compressed.id,
             execution.id,
             analysis.id,
             signature.signature_id,
             analysis.cognitive_hash,
+            analysis_data=analysis,
         )
 
         # 6. Anchor (best-effort)

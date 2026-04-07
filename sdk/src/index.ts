@@ -131,12 +131,14 @@ export class ProofAI {
     signatureId: string,
     cognitiveHash: string,
     options?: BundleOptions,
+    analysisData?: AnalyzeResult,
   ): Promise<BundleResult> {
     return this.call('bundle', {
       promptId, executionId, analysisId, signatureId, cognitiveHash,
       subjectId: options?.subjectId,
       sessionId: options?.sessionId,
       ragSources: options?.ragSources,
+      analysisData: analysisData ?? null,
     });
   }
 
@@ -196,13 +198,15 @@ export class ProofAI {
     // 4. Sign
     const signature = await this.sign(execution);
 
-    // 5. Bundle
+    // 5. Bundle — pass full analysis so nodes are persisted
     const evidenceBundle = await this.bundle(
       compressed.id,
       execution.id,
       analysis.id,
       signature.signatureId,
       analysis.cognitiveHash,
+      undefined,
+      analysis,
     );
 
     // 6. Anchor (optional)

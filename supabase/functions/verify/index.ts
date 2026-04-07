@@ -104,6 +104,8 @@ serve(async (req) => {
         .eq("id", bundleId);
     }
 
+    const analysisData = bundle.analysis_data as Record<string, unknown> | null;
+
     const result = {
       bundleId,
       verified,
@@ -121,6 +123,14 @@ serve(async (req) => {
             confirmedAt: anchor.created_at as string,
           }
         : undefined,
+      ...(analysisData ? {
+        traceQuality: analysisData.traceQuality,
+        traceSource: analysisData.traceSource,
+        cognitiveNodes: analysisData.nodes,
+        cognitiveEdges: analysisData.edges,
+        metrics: analysisData.metrics,
+        ...(analysisData.disclaimer ? { disclaimer: analysisData.disclaimer } : {}),
+      } : {}),
       timestamp: new Date().toISOString(),
     };
 
