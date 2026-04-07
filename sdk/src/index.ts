@@ -95,8 +95,18 @@ export class ProofAI {
     });
   }
 
-  async analyze(executionId: string, analysisText: string): Promise<AnalyzeResult> {
-    return this.call('analyze', { executionId, analysisText });
+  async analyze(
+    executionId: string,
+    analysisText: string,
+    reasoningTrace?: ExecuteResult['reasoning_trace'],
+    traceQuality?: ExecuteResult['trace_quality'],
+  ): Promise<AnalyzeResult> {
+    return this.call('analyze', {
+      executionId,
+      analysisText,
+      reasoningTrace: reasoningTrace ?? [],
+      traceQuality: traceQuality ?? 'output_hash',
+    });
   }
 
   async sign(execution: ExecuteResult): Promise<SignResult> {
@@ -175,8 +185,13 @@ export class ProofAI {
       maxTokens: options.maxTokens,
     });
 
-    // 3. Analyze
-    const analysis = await this.analyze(execution.id, execution.output);
+    // 3. Analyze — pass real reasoning trace and quality tier
+    const analysis = await this.analyze(
+      execution.id,
+      execution.output,
+      execution.reasoning_trace,
+      execution.trace_quality,
+    );
 
     // 4. Sign
     const signature = await this.sign(execution);
@@ -209,6 +224,9 @@ export class ProofAI {
       verified: verification.verified,
       explorerUrl: anchorResult?.explorerUrl,
       transactionHash: anchorResult?.transactionHash,
+      traceQuality: analysis.traceQuality ?? execution.trace_quality ?? 'output_hash',
+      cognitiveNodes: analysis.metrics.nodeCount,
+      ...(analysis.disclaimer ? { disclaimer: analysis.disclaimer } : {}),
       steps: {
         compress: compressed,
         execute: execution,

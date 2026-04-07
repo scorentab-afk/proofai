@@ -25,7 +25,33 @@ console.log(cert.bundleId)        // bnd_8019b37a7f44_...
 console.log(cert.bundleHash)      // sha256 hash
 console.log(cert.explorerUrl)     // https://polygonscan.com/tx/0x...
 console.log(cert.traceQuality)    // "inferred_via_gemini"
+console.log(cert.cognitiveNodes)  // 7  (reasoning steps captured)
 // cert.disclaimer — present when trace is inferred (Claude/GPT providers)
+
+// Access individual cognitive nodes from the analyze step:
+const nodes = cert.steps.analyze.nodes
+// nodes[0] example (Tier 2 — inferred):
+// {
+//   id: "node_0",
+//   label: "The prompt asks to analyse legal risks in a SaaS",
+//   content: "The prompt asks to analyse legal risks in a SaaS contract. I need to consider...",
+//   hash: "a3f8c1d2e4b7...",   // sha256 of content
+//   type: "reasoning",
+//   weight: 0.94,
+//   traceSource: "inferred_via_gemini"
+// }
+
+// nodes[0] example (Tier 1 — native Gemini):
+// {
+//   id: "node_0",
+//   label: "Let me think through what legal risks are typically",
+//   content: "Let me think through what legal risks are typically present in SaaS contracts...",
+//   hash: "b2e9f4a1c8d3...",   // sha256 of the actual thinking block
+//   thought_signature: "b2e9f4a1c8d3...",
+//   type: "reasoning",
+//   weight: 1.0,
+//   traceSource: "native_thinking"
+// }
 ```
 
 ## Cognitive Analysis — Two-tier System

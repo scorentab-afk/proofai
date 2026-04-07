@@ -105,6 +105,14 @@ server.tool(
       // 7. Verify
       const verification = (await callAPI("verify", { bundleId: bundle.id })) as { verified: boolean };
 
+      const traceQuality = execution.trace_quality ?? "output_hash";
+      const traceLabel =
+        traceQuality === "native"
+          ? `native (Gemini 2.0 Flash Thinking — ${analysis.metrics.nodeCount} real thinking blocks)`
+          : traceQuality === "inferred_via_gemini"
+          ? `inferred_via_gemini (reconstructed from ${execution.metadata.provider} response — ${analysis.metrics.nodeCount} steps)`
+          : `output_hash (${analysis.metrics.nodeCount} node)`;
+
       return {
         content: [
           {
@@ -119,9 +127,10 @@ server.tool(
               provider: execution.metadata.provider,
               model: execution.metadata.model,
               tokens: execution.metadata.tokens.total,
+              cognitiveTrace: traceLabel,
               cognitiveNodes: analysis.metrics.nodeCount,
               consistencyScore: analysis.metrics.consistencyScore,
-              traceQuality: execution.trace_quality,
+              traceQuality,
               ...(analysis.disclaimer ? { disclaimer: analysis.disclaimer } : {}),
               aiResponse: execution.output.substring(0, 500) + (execution.output.length > 500 ? "..." : ""),
             }, null, 2),

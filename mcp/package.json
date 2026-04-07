@@ -1,6 +1,6 @@
 {
   "name": "@proofai/mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ProofAI MCP Server — AI compliance tools for Claude Code",
   "main": "dist/index.js",
   "bin": {

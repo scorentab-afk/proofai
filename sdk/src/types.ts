@@ -49,14 +49,33 @@ export interface ExecuteResult {
     content: string;
     thought_signature?: string;
   }>;
-  trace_quality?: 'native' | 'structured' | 'inferred';
+  trace_quality?: 'native' | 'inferred_via_gemini' | 'output_hash';
   timestamp: string;
+}
+
+export type TraceQuality = 'native' | 'inferred_via_gemini' | 'output_hash';
+export type TraceSource = 'native_thinking' | 'inferred_via_gemini' | 'output_hash' | 'synthetic';
+
+export interface CognitiveNode {
+  id: string;
+  /** First sentence of the reasoning step (max 60 chars) — used as graph label */
+  label: string;
+  /** Full content of the reasoning step */
+  content?: string;
+  /** SHA-256 of the node content (thought_signature from Gemini or recomputed) */
+  hash?: string;
+  type: 'reasoning' | 'concept' | 'entity' | 'action' | 'relation';
+  weight: number;
+  /** Present on native Gemini thinking blocks */
+  thought_signature?: string;
+  /** Where this node originated */
+  traceSource?: TraceSource;
 }
 
 export interface AnalyzeResult {
   id: string;
   executionId: string;
-  nodes: Array<{ id: string; label: string; type: string; weight: number }>;
+  nodes: CognitiveNode[];
   edges: Array<{ source: string; target: string; label: string; weight: number }>;
   metrics: {
     nodeCount: number;
@@ -65,6 +84,10 @@ export interface AnalyzeResult {
     complexityScore: number;
   };
   cognitiveHash: string;
+  traceQuality: TraceQuality;
+  traceSource: TraceSource;
+  /** Present when traceQuality is "inferred_via_gemini" */
+  disclaimer?: string;
   timestamp: string;
 }
 
@@ -178,6 +201,12 @@ export interface Certificate {
   verified: boolean;
   explorerUrl?: string;
   transactionHash?: string;
+  /** Quality of the cognitive trace captured */
+  traceQuality: TraceQuality;
+  /** Number of reasoning steps captured */
+  cognitiveNodes: number;
+  /** Present when traceQuality is "inferred_via_gemini" */
+  disclaimer?: string;
   steps: {
     compress: CompressResult;
     execute: ExecuteResult;

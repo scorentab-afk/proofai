@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "proofai"
+version = "1.0.0"
+description = "AI Cognitive Evidence Platform — EU AI Act compliance with blockchain proof"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "HIRAM" }]
+requires-python = ">=3.8"
+keywords = ["ai", "proof", "blockchain", "ed25519", "evidence", "compliance", "audit", "eu-ai-act"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "requests>=2.28.0",
+    "typing-extensions>=4.0.0; python_version < '3.11'",
+]
+
+[project.urls]
+Homepage = "https://github.com/proof-ai/proofai"
+Repository = "https://github.com/proof-ai/proofai"
+Documentation = "https://github.com/proof-ai/proofai"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/proofai"]

@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  # ── 1. Deploy Supabase edge functions ─────────────────────────────────────
+  deploy-supabase:
+    name: Deploy edge functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy all functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+  # ── 2. Publish @proofai/sdk to npm (if version changed) ───────────────────
+  publish-sdk:
+    name: Publish @proofai/sdk
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk
+    outputs:
+      published: ${{ steps.check.outputs.published }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Check if version is already published
+        id: check
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_NAME=$(node -p "require('./package.json').name")
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "Version ${PKG_VERSION} already on npm — skipping."
+          else
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "Version ${PKG_VERSION} not yet published — will publish."
+          fi
+
+      - name: Install dependencies
+        if: steps.check.outputs.published == 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.check.outputs.published == 'true'
+        run: npm run build
+
+      - name: Publish
+        if: steps.check.outputs.published == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+  # ── 3. Publish @proofai/mcp-server to npm (if version changed) ────────────
+  publish-mcp:
+    name: Publish @proofai/mcp-server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    outputs:
+      published: ${{ steps.check.outputs.published }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Check if version is already published
+        id: check
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_NAME=$(node -p "require('./package.json').name")
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "Version ${PKG_VERSION} already on npm — skipping."
+          else
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "Version ${PKG_VERSION} not yet published — will publish."
+          fi
+
+      - name: Install dependencies
+        if: steps.check.outputs.published == 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.check.outputs.published == 'true'
+        run: npm run build
+
+      - name: Publish
+        if: steps.check.outputs.published == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+  # ── 4. Deploy to Vercel ───────────────────────────────────────────────────
+  deploy-vercel:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: [deploy-supabase]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+
+      - name: Deploy to production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
