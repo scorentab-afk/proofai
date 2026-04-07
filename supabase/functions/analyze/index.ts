@@ -34,7 +34,7 @@ serve(async (req) => {
       });
     }
 
-    const { executionId, analysisText, reasoningTrace } = await req.json();
+    const { executionId, analysisText, reasoningTrace, traceQuality } = await req.json();
     if (!executionId || !analysisText) {
       return new Response(
         JSON.stringify({ error: "executionId and analysisText are required" }),
@@ -121,7 +121,11 @@ serve(async (req) => {
             complexityScore: parseFloat(Math.min(1, edges.length / (nodes.length || 1)).toFixed(2)),
           },
           cognitiveHash,
-          traceSource: "native_thinking",
+          traceSource: traceQuality === "native" ? "native_thinking" : "inferred_via_gemini",
+          traceQuality: traceQuality ?? "inferred_via_gemini",
+          ...(traceQuality === "inferred_via_gemini" ? {
+            disclaimer: "Raisonnement inféré par analyse comparative Gemini Thinking — non natif",
+          } : {}),
           timestamp: new Date().toISOString(),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -204,6 +208,7 @@ serve(async (req) => {
         },
         cognitiveHash,
         traceSource: "synthetic",
+        traceQuality: "output_hash",
         timestamp: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -21,7 +21,108 @@ interface ReasoningStep {
   thought_signature?: string;
 }
 
-async function callAnthropic(prompt: string, options: Record<string, unknown>): Promise<{ output: string; trace: ReasoningStep[]; tokens: { prompt: number; completion: number; total: number } }> {
+type TraceQuality = "native" | "inferred_via_gemini" | "output_hash";
+
+interface ExecuteResult {
+  output: string;
+  trace: ReasoningStep[];
+  tokens: { prompt: number; completion: number; total: number };
+  traceQuality: TraceQuality;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared: extract real thinking blocks from a Gemini Thinking API response
+// ─────────────────────────────────────────────────────────────────────────────
+async function extractGeminiThinking(
+  apiKey: string,
+  promptText: string,
+  temperature: number,
+  maxOutputTokens: number,
+): Promise<{ thinking: ReasoningStep[]; output: string; inputTokens: number; outputTokens: number; thoughtsTokens: number }> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-1219:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: { temperature, maxOutputTokens },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Google AI API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  const parts: Array<{ text?: string; thought?: boolean }> =
+    data.candidates?.[0]?.content?.parts ?? [];
+
+  const thinkingParts = parts.filter(p => p.thought === true);
+  const responseParts = parts.filter(p => !p.thought);
+  const output = responseParts.map(p => p.text ?? "").join("");
+
+  const thinking: ReasoningStep[] = [];
+  for (let i = 0; i < thinkingParts.length; i++) {
+    const content = thinkingParts[i].text ?? "";
+    const sig = await sha256(content);
+    thinking.push({ step_index: i, type: "reasoning", content, thought_signature: sig });
+  }
+
+  // Fallback if model returns no thinking blocks
+  if (thinking.length === 0 && output) {
+    const sig = await sha256(output);
+    thinking.push({ step_index: 0, type: "text", content: output, thought_signature: sig });
+  }
+
+  return {
+    thinking,
+    output,
+    inputTokens: data.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+    thoughtsTokens: data.usageMetadata?.thoughtsTokenCount ?? 0,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tier 2: after getting a non-Gemini response, ask Gemini Thinking to infer
+// the reasoning chain that most likely produced that output.
+// ─────────────────────────────────────────────────────────────────────────────
+async function inferReasoningViaGemini(
+  originalPrompt: string,
+  aiResponse: string,
+  providerName: string,
+): Promise<ReasoningStep[]> {
+  const apiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+  if (!apiKey) throw new Error("GOOGLE_AI_API_KEY not set — cannot infer reasoning");
+
+  const inferencePrompt =
+    `You are performing a deep cognitive analysis of an AI response.\n\n` +
+    `ORIGINAL PROMPT:\n${originalPrompt}\n\n` +
+    `AI RESPONSE (provider: ${providerName}):\n${aiResponse}\n\n` +
+    `Task: Reconstruct the internal step-by-step reasoning chain that most likely produced ` +
+    `this response. Think through: what information did the model need to process? What logical ` +
+    `steps did it follow? What considerations, trade-offs, and knowledge shaped the answer? ` +
+    `Provide a detailed, faithful reconstruction of the probable cognitive process.`;
+
+  const { thinking } = await extractGeminiThinking(
+    apiKey,
+    inferencePrompt,
+    0.3,   // low temperature for analytical reconstruction
+    8192,
+  );
+
+  // Re-index steps (they may come from a multi-block thinking response)
+  return thinking.map((s, i) => ({ ...s, step_index: i }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider implementations
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function callAnthropic(prompt: string, options: Record<string, unknown>): Promise<ExecuteResult> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
@@ -50,16 +151,23 @@ async function callAnthropic(prompt: string, options: Record<string, unknown>): 
   const inputTokens = data.usage?.input_tokens ?? 0;
   const outputTokens = data.usage?.output_tokens ?? 0;
 
-  // Anthropic doesn't expose chain-of-thought externally; record the output hash as a single node
-  const sig = await sha256(output);
-  const trace: ReasoningStep[] = [
-    { step_index: 0, type: "text", content: output, thought_signature: sig },
-  ];
+  // Tier 2: infer reasoning via Gemini Thinking
+  let trace: ReasoningStep[];
+  let traceQuality: TraceQuality;
+  try {
+    trace = await inferReasoningViaGemini(prompt, output, "Anthropic Claude");
+    traceQuality = "inferred_via_gemini";
+  } catch {
+    // Fallback if Gemini key not set or inference fails
+    const sig = await sha256(output);
+    trace = [{ step_index: 0, type: "text", content: output, thought_signature: sig }];
+    traceQuality = "output_hash";
+  }
 
-  return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens } };
+  return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens }, traceQuality };
 }
 
-async function callOpenAI(prompt: string, options: Record<string, unknown>): Promise<{ output: string; trace: ReasoningStep[]; tokens: { prompt: number; completion: number; total: number } }> {
+async function callOpenAI(prompt: string, options: Record<string, unknown>): Promise<ExecuteResult> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
 
@@ -87,87 +195,44 @@ async function callOpenAI(prompt: string, options: Record<string, unknown>): Pro
   const inputTokens = data.usage?.prompt_tokens ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
 
-  // OpenAI doesn't expose chain-of-thought externally; record the output hash as a single node
-  const sig = await sha256(output);
-  const trace: ReasoningStep[] = [
-    { step_index: 0, type: "text", content: output, thought_signature: sig },
-  ];
+  // Tier 2: infer reasoning via Gemini Thinking
+  let trace: ReasoningStep[];
+  let traceQuality: TraceQuality;
+  try {
+    trace = await inferReasoningViaGemini(prompt, output, "OpenAI GPT");
+    traceQuality = "inferred_via_gemini";
+  } catch {
+    const sig = await sha256(output);
+    trace = [{ step_index: 0, type: "text", content: output, thought_signature: sig }];
+    traceQuality = "output_hash";
+  }
 
-  return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens } };
+  return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens }, traceQuality };
 }
 
-async function callGemini(prompt: string, options: Record<string, unknown>): Promise<{ output: string; trace: ReasoningStep[]; tokens: { prompt: number; completion: number; total: number } }> {
+async function callGemini(prompt: string, options: Record<string, unknown>): Promise<ExecuteResult> {
   const apiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!apiKey) throw new Error("GOOGLE_AI_API_KEY not set");
 
-  // Use Gemini 2.0 Flash Thinking — returns real chain-of-thought in thought: true parts
-  const model = (!options.modelId || options.modelId === "auto")
-    ? "gemini-2.0-flash-thinking-exp-1219"
-    : (options.modelId as string);
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: (options.temperature as number) ?? 0.7,
-          maxOutputTokens: (options.maxTokens as number) || 8192,
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Google AI API error ${res.status}: ${err}`);
-  }
-
-  const data = await res.json();
-
-  // Gemini Thinking returns parts with thought: true for reasoning and without for the final answer
-  const parts: Array<{ text?: string; thought?: boolean }> =
-    data.candidates?.[0]?.content?.parts ?? [];
-
-  const thinkingParts = parts.filter(p => p.thought === true);
-  const responseParts = parts.filter(p => !p.thought);
-  const output = responseParts.map(p => p.text ?? "").join("");
-
-  const inputTokens = data.usageMetadata?.promptTokenCount ?? 0;
-  const outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
-  const thoughtsTokens = data.usageMetadata?.thoughtsTokenCount ?? 0;
-
-  // Build real cognitive trace — each thinking segment hashed individually
-  const trace: ReasoningStep[] = [];
-  for (let i = 0; i < thinkingParts.length; i++) {
-    const content = thinkingParts[i].text ?? "";
-    const sig = await sha256(content); // hash of the real thinking content
-    trace.push({
-      step_index: i,
-      type: "reasoning",
-      content,
-      thought_signature: sig,
-    });
-  }
-
-  // Fallback: model returned no thinking blocks (shouldn't happen with thinking model)
-  if (trace.length === 0) {
-    const sig = await sha256(output);
-    trace.push({ step_index: 0, type: "text", content: output, thought_signature: sig });
-  }
+  const { thinking, output, inputTokens, outputTokens, thoughtsTokens } =
+    await extractGeminiThinking(
+      apiKey,
+      prompt,
+      (options.temperature as number) ?? 0.7,
+      (options.maxTokens as number) || 8192,
+    );
 
   return {
     output,
-    trace,
-    tokens: {
-      prompt: inputTokens,
-      completion: outputTokens,
-      total: inputTokens + outputTokens + thoughtsTokens,
-    },
+    trace: thinking,
+    tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens + thoughtsTokens },
+    traceQuality: "native",
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Handler
+// ─────────────────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -191,7 +256,6 @@ serve(async (req) => {
       );
     }
 
-    // Use the original prompt text if provided, otherwise fall back to promptRef
     const promptText = prompt || originalPrompt || options?.originalPrompt || promptRef;
 
     const startTime = Date.now();
@@ -199,8 +263,7 @@ serve(async (req) => {
     const isGemini = provider === "gemini" || provider === "google";
     const isClaude = provider === "anthropic";
 
-    let result: { output: string; trace: ReasoningStep[]; tokens: { prompt: number; completion: number; total: number } };
-
+    let result: ExecuteResult;
     if (isGemini) {
       result = await callGemini(promptText, options);
     } else if (isClaude) {
@@ -213,25 +276,23 @@ serve(async (req) => {
     const hash = await sha256(`${promptRef}_${result.output}_${Date.now()}`);
     const id = `exec_${hash.substring(0, 12)}_${Date.now()}`;
 
-    const response = {
-      id,
-      promptRef,
-      output: result.output,
-      metadata: {
-        provider: options.provider,
-        model: options.modelId || "default",
-        latency,
-        tokens: result.tokens,
-      },
-      reasoning_trace: result.trace,
-      // native_thinking = real Gemini thinking blocks; output_hash = hashed final output only
-      trace_quality: isGemini ? "native_thinking" : "output_hash",
-      timestamp: new Date().toISOString(),
-    };
-
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        id,
+        promptRef,
+        output: result.output,
+        metadata: {
+          provider: options.provider,
+          model: options.modelId || "default",
+          latency,
+          tokens: result.tokens,
+        },
+        reasoning_trace: result.trace,
+        trace_quality: result.traceQuality,
+        timestamp: new Date().toISOString(),
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,

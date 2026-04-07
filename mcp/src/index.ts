@@ -62,12 +62,13 @@ server.tool(
         metadata: { provider: string; model: string; tokens: { total: number } };
       };
 
-      // 3. Analyze — pass real thinking trace when available (Gemini native_thinking)
+      // 3. Analyze — pass real thinking trace + quality tier
       const analysis = (await callAPI("analyze", {
         executionId: execution.id,
         analysisText: execution.output,
         reasoningTrace: execution.reasoning_trace ?? [],
-      })) as { id: string; cognitiveHash: string; metrics: { nodeCount: number; consistencyScore: number }; traceSource: string };
+        traceQuality: execution.trace_quality,
+      })) as { id: string; cognitiveHash: string; metrics: { nodeCount: number; consistencyScore: number }; traceQuality: string; disclaimer?: string };
 
       // 4. Sign
       const signature = (await callAPI("sign", {
@@ -120,6 +121,8 @@ server.tool(
               tokens: execution.metadata.tokens.total,
               cognitiveNodes: analysis.metrics.nodeCount,
               consistencyScore: analysis.metrics.consistencyScore,
+              traceQuality: execution.trace_quality,
+              ...(analysis.disclaimer ? { disclaimer: analysis.disclaimer } : {}),
               aiResponse: execution.output.substring(0, 500) + (execution.output.length > 500 ? "..." : ""),
             }, null, 2),
           },
