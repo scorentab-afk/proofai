@@ -83,7 +83,7 @@ server.tool(
         timestamps: { request_received: new Date().toISOString() },
       })) as { signatureId: string };
 
-      // 5. Bundle
+      // 5. Bundle — pass full analysis so nodes are persisted
       const bundle = (await callAPI("bundle", {
         promptId: compressed.id,
         executionId: execution.id,
@@ -94,6 +94,7 @@ server.tool(
         aiResponse: execution.output,
         provider: execution.metadata.provider,
         model: execution.metadata.model,
+        analysisData: analysis,
       })) as { id: string; bundleHash: string };
 
       // 6. Anchor
@@ -180,7 +181,7 @@ server.tool(
         timestamps: { logged_at: new Date().toISOString() },
       })) as { signatureId: string };
 
-      // Bundle
+      // Bundle — pass full analysis so nodes are persisted
       const bundle = (await callAPI("bundle", {
         promptId: compressed.id,
         executionId: `ext_${Date.now()}`,
@@ -191,6 +192,7 @@ server.tool(
         aiResponse: response,
         provider,
         model,
+        analysisData: analysis,
       })) as { id: string; bundleHash: string };
 
       // Anchor
