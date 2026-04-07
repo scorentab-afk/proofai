@@ -50,11 +50,10 @@ async function callAnthropic(prompt: string, options: Record<string, unknown>): 
   const inputTokens = data.usage?.input_tokens ?? 0;
   const outputTokens = data.usage?.output_tokens ?? 0;
 
+  // Anthropic doesn't expose chain-of-thought externally; record the output hash as a single node
+  const sig = await sha256(output);
   const trace: ReasoningStep[] = [
-    { step_index: 0, type: "analysis", content: "Examining the input prompt to identify the core request." },
-    { step_index: 1, type: "evidence", content: "Processing semantic markers and context requirements." },
-    { step_index: 2, type: "evaluation", content: "Cross-referencing cognitive patterns with knowledge structures." },
-    { step_index: 3, type: "conclusion", content: `Generated response with ${outputTokens} tokens.` },
+    { step_index: 0, type: "text", content: output, thought_signature: sig },
   ];
 
   return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens } };
@@ -88,11 +87,10 @@ async function callOpenAI(prompt: string, options: Record<string, unknown>): Pro
   const inputTokens = data.usage?.prompt_tokens ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
 
+  // OpenAI doesn't expose chain-of-thought externally; record the output hash as a single node
+  const sig = await sha256(output);
   const trace: ReasoningStep[] = [
-    { step_index: 0, type: "analysis", content: "## Step 1: Analysis\nParsing compressed prompt to extract semantic intent." },
-    { step_index: 1, type: "evidence", content: "## Step 2: Evidence\nIdentified key cognitive nodes from input." },
-    { step_index: 2, type: "evaluation", content: "## Step 3: Evaluation\nAll cognitive nodes successfully mapped." },
-    { step_index: 3, type: "conclusion", content: `## Step 4: Conclusion\nGenerated ${outputTokens} token response.` },
+    { step_index: 0, type: "text", content: output, thought_signature: sig },
   ];
 
   return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens } };
@@ -102,7 +100,11 @@ async function callGemini(prompt: string, options: Record<string, unknown>): Pro
   const apiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!apiKey) throw new Error("GOOGLE_AI_API_KEY not set");
 
-  const model = (!options.modelId || options.modelId === "auto") ? "gemini-2.0-flash" : (options.modelId as string);
+  // Use Gemini 2.0 Flash Thinking — returns real chain-of-thought in thought: true parts
+  const model = (!options.modelId || options.modelId === "auto")
+    ? "gemini-2.0-flash-thinking-exp-1219"
+    : (options.modelId as string);
+
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -112,7 +114,7 @@ async function callGemini(prompt: string, options: Record<string, unknown>): Pro
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: (options.temperature as number) ?? 0.7,
-          maxOutputTokens: (options.maxTokens as number) || 1024,
+          maxOutputTokens: (options.maxTokens as number) || 8192,
         },
       }),
     }
@@ -124,24 +126,47 @@ async function callGemini(prompt: string, options: Record<string, unknown>): Pro
   }
 
   const data = await res.json();
-  const output = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+  // Gemini Thinking returns parts with thought: true for reasoning and without for the final answer
+  const parts: Array<{ text?: string; thought?: boolean }> =
+    data.candidates?.[0]?.content?.parts ?? [];
+
+  const thinkingParts = parts.filter(p => p.thought === true);
+  const responseParts = parts.filter(p => !p.thought);
+  const output = responseParts.map(p => p.text ?? "").join("");
+
   const inputTokens = data.usageMetadata?.promptTokenCount ?? 0;
   const outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
+  const thoughtsTokens = data.usageMetadata?.thoughtsTokenCount ?? 0;
 
-  // Generate thought signatures for Gemini
+  // Build real cognitive trace — each thinking segment hashed individually
   const trace: ReasoningStep[] = [];
-  const steps = ["reasoning", "function_call", "reasoning", "text", "reasoning"];
-  for (let i = 0; i < steps.length; i++) {
-    const sig = await sha256(`gemini_step_${i}_${Date.now()}_${output.substring(0, 50)}`);
+  for (let i = 0; i < thinkingParts.length; i++) {
+    const content = thinkingParts[i].text ?? "";
+    const sig = await sha256(content); // hash of the real thinking content
     trace.push({
       step_index: i,
-      type: steps[i],
-      content: `Gemini ${steps[i]} step ${i}: processing cognitive analysis.`,
-      thought_signature: sig.substring(0, 32),
+      type: "reasoning",
+      content,
+      thought_signature: sig,
     });
   }
 
-  return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens } };
+  // Fallback: model returned no thinking blocks (shouldn't happen with thinking model)
+  if (trace.length === 0) {
+    const sig = await sha256(output);
+    trace.push({ step_index: 0, type: "text", content: output, thought_signature: sig });
+  }
+
+  return {
+    output,
+    trace,
+    tokens: {
+      prompt: inputTokens,
+      completion: outputTokens,
+      total: inputTokens + outputTokens + thoughtsTokens,
+    },
+  };
 }
 
 serve(async (req) => {
@@ -199,7 +224,8 @@ serve(async (req) => {
         tokens: result.tokens,
       },
       reasoning_trace: result.trace,
-      trace_quality: isGemini ? "native" : "structured",
+      // native_thinking = real Gemini thinking blocks; output_hash = hashed final output only
+      trace_quality: isGemini ? "native_thinking" : "output_hash",
       timestamp: new Date().toISOString(),
     };
 

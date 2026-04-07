@@ -113,13 +113,15 @@ serve(async (req) => {
 
     const report = await generateComplianceReport(supabase, targetBundleId, regulatorAuth);
 
-    // Log regulator access
-    if (regulatorAuth) {
-      await supabase.from("regulator_access_log").insert({
-        regulator_token_id: regulatorAuth.id,
-        bundle_id: targetBundleId,
-        action: "view",
-      }).catch(() => {});
+    // Log regulator access — only for DB-issued tokens (reg_ bypass tokens are anonymous)
+    if (regulatorAuth && !regulatorAuth.id.startsWith("anon_")) {
+      try {
+        await supabase.from("regulator_access_log").insert({
+          regulator_token_id: regulatorAuth.id,
+          bundle_id: targetBundleId,
+          action: "view",
+        });
+      } catch { /* best-effort */ }
     }
 
     return new Response(JSON.stringify(report), {

@@ -49,17 +49,25 @@ server.tool(
       // 1. Compress
       const compressed = (await callAPI("compress", { prompt, options: { compressionLevel: "medium" } })) as { id: string; compressedDsl: string };
 
-      // 2. Execute
+      // 2. Execute — pass original prompt so the LLM receives the actual text
       const execution = (await callAPI("execute", {
         promptRef: compressed.id,
+        prompt,
         options: { provider, modelId: "auto", temperature, maxTokens },
-      })) as { id: string; output: string; metadata: { provider: string; model: string; tokens: { total: number } } };
+      })) as {
+        id: string;
+        output: string;
+        reasoning_trace: Array<{ step_index: number; type: string; content: string; thought_signature?: string }>;
+        trace_quality: string;
+        metadata: { provider: string; model: string; tokens: { total: number } };
+      };
 
-      // 3. Analyze
+      // 3. Analyze — pass real thinking trace when available (Gemini native_thinking)
       const analysis = (await callAPI("analyze", {
         executionId: execution.id,
         analysisText: execution.output,
-      })) as { id: string; cognitiveHash: string; metrics: { nodeCount: number; consistencyScore: number } };
+        reasoningTrace: execution.reasoning_trace ?? [],
+      })) as { id: string; cognitiveHash: string; metrics: { nodeCount: number; consistencyScore: number }; traceSource: string };
 
       // 4. Sign
       const signature = (await callAPI("sign", {
@@ -83,6 +91,8 @@ server.tool(
         cognitiveHash: analysis.cognitiveHash,
         promptContent: prompt,
         aiResponse: execution.output,
+        provider: execution.metadata.provider,
+        model: execution.metadata.model,
       })) as { id: string; bundleHash: string };
 
       // 6. Anchor
