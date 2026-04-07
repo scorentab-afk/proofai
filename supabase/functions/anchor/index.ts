@@ -54,21 +54,14 @@ serve(async (req) => {
     const dataHash = await sha256(`proofai_anchor_${bundleId}_${Date.now()}`);
     const dataHex = `0x${dataHash}`;
 
-    // Get the wallet address from the private key
-    // Using eth_accounts equivalent: derive address via keccak
-    // For simplicity, we use eth_getTransactionCount with a raw tx approach
     const cleanKey = privateKey.startsWith("0x") ? privateKey.slice(2) : privateKey;
+    const address = await getAddress(cleanKey);
 
     // Get nonce
     const nonceRes = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "eth_getTransactionCount",
-        params: [await getAddress(cleanKey), "latest"],
-      }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionCount", params: [address, "latest"] }),
     });
     const nonceData = await nonceRes.json();
 
@@ -76,77 +69,61 @@ serve(async (req) => {
     const gasPriceRes = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 2,
-        method: "eth_gasPrice",
-        params: [],
-      }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "eth_gasPrice", params: [] }),
     });
     const gasPriceData = await gasPriceRes.json();
 
-    // Send raw transaction with data field containing the bundle hash
-    // Send a self-transaction with data
-    const address = await getAddress(cleanKey);
-    const nonce = nonceData.result;
-    const gasPrice = gasPriceData.result;
+    if (!nonceData.result || !gasPriceData.result) {
+      throw new Error(`RPC error: nonce=${JSON.stringify(nonceData)}, gasPrice=${JSON.stringify(gasPriceData)}`);
+    }
 
-    // Build and sign the transaction using eth_sendTransaction via personal
-    // Since we don't have a full EVM signer in Deno, use Alchemy's sendPrivateTransaction
-    // or fallback to raw tx encoding
+    const nonceBig = BigInt(nonceData.result);
+    const gasPriceBig = BigInt(gasPriceData.result);
+    const CHAIN_ID = 137n; // Polygon mainnet
+    const GAS_LIMIT = 50000n;
+
+    // Build and sign EIP-155 raw transaction
+    const rawTx = await buildSignedTx({
+      nonce: nonceBig,
+      gasPrice: gasPriceBig,
+      gasLimit: GAS_LIMIT,
+      to: address,
+      value: 0n,
+      data: dataHex,
+      chainId: CHAIN_ID,
+      privateKeyHex: cleanKey,
+    });
+
+    // Send signed raw transaction (works with Alchemy and all standard RPC providers)
     const txRes = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 3,
-        method: "eth_sendTransaction",
-        params: [
-          {
-            from: address,
-            to: address,
-            value: "0x0",
-            data: dataHex,
-            nonce: nonce,
-            gasPrice: gasPrice,
-            gas: "0x5208",
-          },
-        ],
-      }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "eth_sendRawTransaction", params: [rawTx] }),
     });
     const txData = await txRes.json();
 
-    let transactionHash: string;
-    let blockNumber: number;
-    let status: "pending" | "confirmed" | "failed";
+    if (!txData.result) {
+      throw new Error(`eth_sendRawTransaction failed: ${JSON.stringify(txData.error ?? txData)}`);
+    }
 
-    if (txData.result) {
-      transactionHash = txData.result;
-      status = "pending";
-      blockNumber = 0;
+    let transactionHash: string = txData.result;
+    let blockNumber = 0;
+    let status: "pending" | "confirmed" | "failed" = "pending";
 
-      // Wait briefly and check for confirmation
+    // Poll for receipt (up to ~15s)
+    for (let i = 0; i < 5; i++) {
       await new Promise((r) => setTimeout(r, 3000));
       const receiptRes = await fetch(rpcUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 4,
-          method: "eth_getTransactionReceipt",
-          params: [transactionHash],
-        }),
+        body: JSON.stringify({ jsonrpc: "2.0", id: 4, method: "eth_getTransactionReceipt", params: [transactionHash] }),
       });
       const receiptData = await receiptRes.json();
       if (receiptData.result) {
         blockNumber = parseInt(receiptData.result.blockNumber, 16);
         status = receiptData.result.status === "0x1" ? "confirmed" : "failed";
+        break;
       }
-    } else {
-      // If direct send fails, store the anchor intent for later processing
-      transactionHash = `0x${dataHash}`;
-      blockNumber = 0;
-      status = "pending";
     }
 
     const explorerBase =
@@ -196,6 +173,95 @@ serve(async (req) => {
     });
   }
 });
+
+// --- RLP helpers ---
+
+function intToMinBytes(n: bigint): Uint8Array {
+  if (n === 0n) return new Uint8Array(0);
+  const hex = n.toString(16);
+  const padded = hex.length % 2 ? "0" + hex : hex;
+  return new Uint8Array(padded.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+}
+
+function hexStrToBytes(hex: string): Uint8Array {
+  const h = hex.startsWith("0x") ? hex.slice(2) : hex;
+  return new Uint8Array(h.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+}
+
+function rlpItem(buf: Uint8Array): Uint8Array {
+  if (buf.length === 1 && buf[0] < 0x80) return buf;
+  if (buf.length <= 55) return Uint8Array.from([0x80 + buf.length, ...buf]);
+  const lenBytes = intToMinBytes(BigInt(buf.length));
+  return Uint8Array.from([0xb7 + lenBytes.length, ...lenBytes, ...buf]);
+}
+
+function rlpList(items: Uint8Array[]): Uint8Array {
+  const encoded = items.map(rlpItem);
+  const totalLen = encoded.reduce((n, a) => n + a.length, 0);
+  const body = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const a of encoded) { body.set(a, offset); offset += a.length; }
+  if (body.length <= 55) return Uint8Array.from([0xc0 + body.length, ...body]);
+  const lenBytes = intToMinBytes(BigInt(body.length));
+  return Uint8Array.from([0xf7 + lenBytes.length, ...lenBytes, ...body]);
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return "0x" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// --- Transaction signing (EIP-155) ---
+
+async function buildSignedTx(params: {
+  nonce: bigint;
+  gasPrice: bigint;
+  gasLimit: bigint;
+  to: string;
+  value: bigint;
+  data: string;
+  chainId: bigint;
+  privateKeyHex: string;
+}): Promise<string> {
+  const { keccak_256 } = await import("https://esm.sh/@noble/hashes@1.6.1/sha3");
+  const { secp256k1 } = await import("https://esm.sh/@noble/curves@1.7.0/secp256k1");
+
+  const privKeyBytes = hexStrToBytes(params.privateKeyHex);
+
+  // EIP-155 pre-image: [nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0]
+  const preSigning = rlpList([
+    intToMinBytes(params.nonce),
+    intToMinBytes(params.gasPrice),
+    intToMinBytes(params.gasLimit),
+    hexStrToBytes(params.to),
+    intToMinBytes(params.value),
+    hexStrToBytes(params.data),
+    intToMinBytes(params.chainId),
+    new Uint8Array(0),
+    new Uint8Array(0),
+  ]);
+
+  const msgHash = keccak_256(preSigning);
+  const sig = secp256k1.sign(msgHash, privKeyBytes, { lowS: true });
+
+  const v = params.chainId * 2n + 35n + BigInt(sig.recovery);
+  const r = sig.r;
+  const s = sig.s;
+
+  // Signed transaction
+  const signed = rlpList([
+    intToMinBytes(params.nonce),
+    intToMinBytes(params.gasPrice),
+    intToMinBytes(params.gasLimit),
+    hexStrToBytes(params.to),
+    intToMinBytes(params.value),
+    hexStrToBytes(params.data),
+    intToMinBytes(v),
+    intToMinBytes(r),
+    intToMinBytes(s),
+  ]);
+
+  return bytesToHex(signed);
+}
 
 /**
  * Derive Ethereum address from raw private key hex.
