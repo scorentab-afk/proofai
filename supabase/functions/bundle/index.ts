@@ -15,6 +15,23 @@ async function sha256(data: string): Promise<string> {
     .join("");
 }
 
+// Deterministic JSON serialisation: sorts object keys alphabetically at every level.
+// Required so that JSONB round-trips (which reorder keys) still produce the same hash.
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return "[" + (value as unknown[]).map(stableStringify).join(",") + "]";
+  }
+  const keys = Object.keys(value as object).sort();
+  return (
+    "{" +
+    keys
+      .map((k) => JSON.stringify(k) + ":" + stableStringify((value as Record<string, unknown>)[k]))
+      .join(",") +
+    "}"
+  );
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -73,16 +90,17 @@ serve(async (req) => {
       },
     ];
 
-    // Compute bundle hash over all evidence
-    const bundleData = JSON.stringify({
+    // Compute bundle hash over all evidence.
+    // stableStringify ensures key order is deterministic (sorted) so that JSONB
+    // round-trips do not change the hash when regulators recompute it client-side.
+    const bundleHash = await sha256(stableStringify({
       promptId,
       executionId,
       analysisId,
       signatureId,
       cognitiveHash,
       timeline,
-    });
-    const bundleHash = await sha256(bundleData);
+    }));
     const bundleId = `bnd_${bundleHash.substring(0, 12)}_${Date.now()}`;
 
     // Store in Supabase if credentials available
