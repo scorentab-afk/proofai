@@ -261,6 +261,8 @@ async function generateComplianceReport(
   if (bundle.subject_id_hash) regulators.push({ name: "CNIL", jurisdiction: "Personal data processing", relevance: "high" });
   regulators.push({ name: "DGCCRF", jurisdiction: "AI Act enforcement (national contact point)", relevance: "medium" });
 
+  const analysisData = bundle.analysis_data as Record<string, unknown> | null;
+
   return {
     bundleId,
     found: true,
@@ -299,6 +301,13 @@ async function generateComplianceReport(
       model: bundle.model || null,
       accessLevel: "full",
       timeline: Array.isArray(bundle.timeline) ? bundle.timeline : [],
+      // Cognitive analysis — real nodes with content and hashes
+      traceQuality: analysisData?.traceQuality ?? null,
+      traceSource: analysisData?.traceSource ?? null,
+      cognitiveNodes: analysisData?.nodes ?? [],
+      cognitiveEdges: analysisData?.edges ?? [],
+      cognitiveMetrics: analysisData?.metrics ?? null,
+      disclaimer: analysisData?.disclaimer ?? null,
     } : {
       promptContent: null,
       aiResponse: null,
