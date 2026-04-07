@@ -15,9 +15,28 @@ Review the source: https://github.com/proof-ai/proofai
 ## Tools
 
 ### proofai_certify
-Certify an AI decision with cryptographic proof. Runs the full ProofAI pipeline: compress, execute AI, analyze cognitive graph, sign with Ed25519, bundle evidence, anchor to Polygon blockchain, and verify. Returns a blockchain-verified evidence bundle with Polygonscan URL.
+Certify an AI decision with cryptographic proof. Runs the full ProofAI pipeline: compress → execute AI → two-tier cognitive analysis → sign with Ed25519 → bundle evidence → anchor to Polygon blockchain → verify. Returns a blockchain-verified evidence bundle with Polygonscan URL.
+
+**Pipeline details:**
+1. `compress` — tokenize prompt to DSL + SHA-256 hash
+2. `execute` — real AI call (Claude, Gemini, or GPT)
+3. `analyze` — two-tier cognitive graph:
+   - **Tier 1 (Gemini):** native `thought: true` blocks from Gemini 2.0 Flash Thinking → `trace_quality: "native"`
+   - **Tier 2 (Claude/GPT):** Gemini Thinking reconstructs the reasoning chain → `trace_quality: "inferred_via_gemini"`
+4. `sign` — Ed25519 signature of the execution
+5. `bundle` — assemble evidence bundle with SHA-256 hash
+6. `anchor` — write bundle hash to Polygon PoS mainnet (EIP-155 signed raw transaction)
+7. `verify` — check signature + blockchain + hash chain
 
 **When to use:** When you need tamper-evident proof of an AI decision for compliance, audit, or legal purposes.
+
+**Output includes:**
+- `bundleId` / `bundleHash` — evidence bundle reference
+- `verified` — true if all integrity checks pass
+- `explorerUrl` — Polygonscan URL for independent verification
+- `traceQuality` — `"native"` | `"inferred_via_gemini"` | `"output_hash"`
+- `disclaimer` — present when trace is inferred (not native Gemini thinking)
+- `cognitiveNodes` — number of reasoning steps extracted
 
 ### proofai_log
 Log an AI decision that already happened. Provide the original prompt and AI response — ProofAI signs it with Ed25519, bundles the evidence, and anchors the hash to Polygon. No AI execution needed.
@@ -25,7 +44,7 @@ Log an AI decision that already happened. Provide the original prompt and AI res
 **When to use:** When you want to retroactively certify an AI interaction that already occurred.
 
 ### proofai_verify
-Verify an evidence bundle's integrity and blockchain anchoring. Checks data integrity, timestamp validity, ledger anchoring, and hash matching against EU AI Act requirements.
+Verify an evidence bundle's integrity and blockchain anchoring. Checks data integrity, timestamp validity, ledger anchoring, and hash matching against EU AI Act requirements (Art. 12, 14, 19).
 
 **When to use:** When you need to confirm a bundle hasn't been tampered with.
 
@@ -54,6 +73,12 @@ Get post-market monitoring statistics for AI compliance (EU AI Act Article 72). 
     }
   }
 }
+```
+
+Or via clawhub:
+
+```bash
+npx clawhub@latest install proofai
 ```
 
 ## Links

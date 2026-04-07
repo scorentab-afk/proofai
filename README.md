@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Article%2012%20Ready-blue.svg)](https://artificialintelligenceact.eu/article/12/)
-[![Polygon PoS](https://img.shields.io/badge/Blockchain-Polygon%20PoS-8247E5.svg)](https://polygonscan.com)
+[![Polygon PoS Mainnet](https://img.shields.io/badge/Blockchain-Polygon%20PoS%20Mainnet-8247E5.svg)](https://polygonscan.com)
 [![Ed25519](https://img.shields.io/badge/Crypto-Ed25519-orange.svg)](https://github.com/paulmillr/noble-ed25519)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E.svg)](https://supabase.com)
 
@@ -56,7 +56,7 @@ proofAI anchors every AI decision on the Polygon blockchain with a real Ed25519 
 | RAG / reference database tracking | Art. 12 | ❌ | ❌ | ❌ | ✅ |
 | Human oversight logging | Art. 14 | ❌ | ✅ | ✅ | ✅ |
 | Reasoning trace | Art. 12 | ❌ | ❌ | ❌ | ✅ |
-| Gemini thought signatures | Art. 12 | ❌ | ❌ | ❌ | ✅ |
+| Cognitive graph (Gemini Thinking) | Art. 12 | ❌ | ❌ | ❌ | ✅ |
 | Post-market monitoring | Art. 72 | ❌ | ✅ | ❌ | ✅ |
 | Tamper-evident logs | Art. 19 | ❌ | ❌ | ❌ | ✅ |
 | Ed25519 cryptographic signature | Art. 19 | ❌ | ❌ | ❌ | ✅ |
@@ -104,15 +104,16 @@ Your AI call
 ① Compress prompt → DSL + SHA-256 hash
     ↓
 ② Execute AI (Claude · Gemini · GPT)
-   Extract reasoning trace + Gemini thought signatures
     ↓
-③ Generate cognitive knowledge graph
+③ Cognitive analysis — two-tier Gemini Thinking
+   Tier 1 (Gemini): real native thinking blocks
+   Tier 2 (Claude/GPT): Gemini infers reasoning chain
     ↓
 ④ Sign with Ed25519 ← real cryptographic signature
     ↓
-⑤ Bundle: prompt + output + signature + graph + RAG sources
+⑤ Bundle: prompt + output + signature + cognitive graph + RAG sources
     ↓
-⑥ Anchor bundle hash → Polygon blockchain
+⑥ Anchor bundle hash → Polygon PoS mainnet
     ↓
 ⑦ Verify: Ed25519 + blockchain + hash chain
     ↓
@@ -121,6 +122,67 @@ Certificate PDF with Polygonscan URL
 
 Anyone can verify at `https://polygonscan.com/tx/[tx-hash]`
 No account. No login. No middleman. Just math.
+
+**Live mainnet example:**
+[`0xd99e6989af59b8aa032757f5e1f014e4b62cb235e9d961fc00e0bae19966c905`](https://polygonscan.com/tx/0xd99e6989af59b8aa032757f5e1f014e4b62cb235e9d961fc00e0bae19966c905)
+
+---
+
+## Cognitive Evidence — Two-tier Analysis
+
+proofAI is the only compliance tool that captures **real AI reasoning** as evidence, not just the final output.
+
+### Tier 1 — Native (Gemini 2.0 Flash Thinking)
+
+When the provider is Gemini, proofAI uses `gemini-2.0-flash-thinking-exp-1219` and extracts the **real chain-of-thought** from the model's native thinking blocks:
+
+```
+prompt → Gemini 2.0 Flash Thinking
+              ↓
+  parts.filter(p => p.thought === true)
+              ↓
+  each block → sha256(content) → cognitive node
+  trace_quality: "native"
+```
+
+Each `thought: true` response part is a real reasoning step — hashed individually and stored as a cognitive node.
+
+### Tier 2 — Inferred via Gemini Thinking (Claude, GPT, all others)
+
+When the provider is Claude or GPT, proofAI first calls the provider for the response, then calls Gemini Thinking to **reconstruct the likely reasoning chain** that produced it:
+
+```
+prompt → Claude / GPT → response
+                ↓
+  inferReasoningViaGemini(prompt, response, providerName)
+    → Gemini Thinking with meta-prompt:
+      "Reconstruct the step-by-step reasoning chain
+       that most likely produced this response..."
+                ↓
+  Gemini's thought: true blocks → cognitive nodes
+  trace_quality: "inferred_via_gemini"
+  disclaimer: "Raisonnement inféré par analyse comparative
+               Gemini Thinking — non natif"
+```
+
+### Fallback
+
+If `GOOGLE_AI_API_KEY` is not configured, proofAI records a SHA-256 hash of the final output as a single node (`trace_quality: "output_hash"`).
+
+---
+
+## Regulator Portal
+
+Independent compliance verification — no account, no login, no intermediary.
+
+**[proofai-ochre.vercel.app/regulator](https://proofai-ochre.vercel.app/regulator)**
+
+- Search by Bundle ID or Polygon transaction hash
+- EU AI Act Article 12, 14, 19 + GDPR compliance checks
+- Blockchain record with Polygonscan link
+- **Independent hash verification** — recomputes SHA-256 in the browser (zero server calls) to prove the displayed data matches the anchored hash
+- **Regulator token access** (`reg_*` format) — unlocks full prompt content, AI response, and cognitive nodes
+- Accessible to CNIL, ACPR, ARCOM, DGCCRF, PEReN, DGE
 
 ---
 
@@ -160,6 +222,7 @@ const cert = await proofai.certify('Analyze this contract for legal risks', {
 console.log(cert.verified)        // true
 console.log(cert.bundleHash)      // sha256 hash
 console.log(cert.explorerUrl)     // https://polygonscan.com/tx/0x...
+console.log(cert.traceQuality)    // "inferred_via_gemini"
 
 // Human oversight (Art. 14)
 await proofai.review(cert.bundleId, 'dpo@company.com', 'compliance_officer', 'approved')
@@ -169,6 +232,33 @@ const stats = await proofai.monitor()
 ```
 
 Or step by step — `compress()`, `execute()`, `analyze()`, `sign()`, `bundle()`, `anchor()`, `verify()`.
+
+---
+
+## MCP — use proofAI directly from Claude Code
+
+```bash
+npx clawhub@latest install proofai
+```
+
+Or manually in `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "proofai": {
+      "command": "npx",
+      "args": ["-y", "@proofai/mcp-server"],
+      "env": {
+        "PROOFAI_API_KEY": "pk_live_xxx",
+        "PROOFAI_ANON_KEY": "your-supabase-anon-key"
+      }
+    }
+  }
+}
+```
+
+Then in Claude Code: `proofai_certify "Your AI decision to certify"`
 
 ---
 
@@ -192,11 +282,11 @@ Open `http://localhost:8080`
 | Function | Article | What it does |
 |----------|---------|-------------|
 | `compress` | Art. 12 | Compress prompt to DSL + SHA-256 |
-| `execute` | Art. 12 | Real AI call — Claude, Gemini, or GPT |
-| `analyze` | Art. 12 | Cognitive knowledge graph from output |
+| `execute` | Art. 12 | Real AI call — Claude, Gemini, or GPT + two-tier Gemini Thinking |
+| `analyze` | Art. 12 | Cognitive graph from native or inferred thinking trace |
 | `sign` | Art. 19 | Real Ed25519 signature of the execution |
 | `bundle` | Art. 12 | Assemble evidence bundle + subject hash + RAG |
-| `anchor` | Art. 19 | Write bundle hash to Polygon blockchain |
+| `anchor` | Art. 19 | Write bundle hash to Polygon PoS mainnet (EIP-155 signed tx) |
 | `verify` | Art. 19 | Verify: signature + blockchain + hash chain |
 | `review` | Art. 14 | Human oversight — reviewer logs decision |
 | `monitor` | Art. 72 | Post-market monitoring — anomaly detection |
@@ -209,8 +299,9 @@ Open `http://localhost:8080`
 Frontend     React 18 + TypeScript + Tailwind + shadcn/ui + Framer Motion
 Backend      Supabase Edge Functions (Deno)
 Crypto       @noble/ed25519 — real Ed25519 signatures
-Blockchain   Polygon PoS mainnet via Alchemy
-AI           Claude (Anthropic) · Gemini (Google) · GPT (OpenAI)
+             @noble/curves + RLP — EIP-155 raw transaction signing
+Blockchain   Polygon PoS mainnet via Alchemy (eth_sendRawTransaction)
+AI           Claude (Anthropic) · Gemini 2.0 Flash Thinking · GPT (OpenAI)
 Graphs       React Flow — cognitive knowledge graph
 PDF          jsPDF — exportable compliance certificate
 ```
@@ -243,15 +334,7 @@ supabase secrets set \
 **3. Deploy functions**
 
 ```bash
-supabase functions deploy compress
-supabase functions deploy execute
-supabase functions deploy analyze
-supabase functions deploy sign
-supabase functions deploy bundle
-supabase functions deploy anchor
-supabase functions deploy verify
-supabase functions deploy review
-supabase functions deploy monitor
+supabase functions deploy compress execute analyze sign bundle anchor verify review monitor
 ```
 
 **4. Build frontend**
@@ -272,7 +355,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 # Supabase secrets
 ANTHROPIC_API_KEY=
-GOOGLE_AI_API_KEY=
+GOOGLE_AI_API_KEY=        # required for Gemini Thinking (both tiers)
 OPENAI_API_KEY=
 ALCHEMY_API_KEY=
 POLYGON_PRIVATE_KEY=
@@ -307,19 +390,6 @@ These appear to conflict. proofAI resolves this with **crypto-shredding**:
 - Personal content becomes cryptographically inaccessible
 
 Full compliance. No trade-offs.
-
----
-
-## Gemini Thought Signatures
-
-proofAI is the only compliance tool that captures Gemini's native **thought signatures** — cryptographic markers attached to each reasoning step.
-
-Your certificate proves not just *what* the AI said. But *how it reasoned*.
-
-```typescript
-const trace = ThoughtSignatureExtractor.extractFromResponse(response.content)
-// → [{ step_index: 0, step_type: 'reasoning', thought_signature: '7f3a...' }]
-```
 
 ---
 

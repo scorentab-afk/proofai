@@ -15,13 +15,35 @@ Fines: up to **EUR 35 million** or **7% of global annual turnover**.
 | Subject identification | Art. 12 | `subjectId` is SHA-256 hashed before storage — never in cleartext |
 | RAG source tracking | Art. 12 | `ragSources` field tracks which documents influenced the AI response |
 | Human oversight logging | Art. 14 | `review()` endpoint logs reviewer identity (hashed), role, and decision |
-| Reasoning trace | Art. 12 | Full reasoning trace extracted from Claude, Gemini, and GPT |
-| Gemini thought signatures | Art. 12 | Native cryptographic markers from each Gemini reasoning step |
+| Reasoning trace (two-tier) | Art. 12 | Native Gemini thinking blocks (Tier 1) or inferred via Gemini Thinking for Claude/GPT (Tier 2) |
+| Cognitive knowledge graph | Art. 12 | Each reasoning step hashed individually and stored as a cognitive node |
 | Post-market monitoring | Art. 72 | `monitor()` endpoint provides anomaly detection and risk stats |
 | Tamper-evident logs | Art. 19 | SHA-256 hash chain + Ed25519 signature + blockchain anchor |
 | Cryptographic signature | Art. 19 | Real Ed25519 signature of the entire execution payload |
 | Blockchain anchor | Art. 19 | Bundle hash written to Polygon — verifiable by anyone on Polygonscan |
 | GDPR crypto-shredding | GDPR Art. 17 | `anonymize_subject()` soft-deletes personal data, audit trail stays intact |
+
+## Cognitive Evidence — Two-tier Analysis
+
+ProofAI is the only compliance tool that captures real AI reasoning as evidence, not just the final output.
+
+### Tier 1 — Native (Gemini provider)
+
+When `provider: 'gemini'`, ProofAI uses `gemini-2.0-flash-thinking-exp-1219` and extracts real `thought: true` blocks from the API response. Each thinking segment becomes a cognitive node with its actual content hashed individually. `traceQuality: "native"`.
+
+### Tier 2 — Inferred (Claude, GPT, all others)
+
+When `provider: 'anthropic'` or `'openai'`, ProofAI calls the provider for the response, then sends the prompt + response to Gemini Thinking with a meta-prompt: *"Reconstruct the step-by-step reasoning chain that most likely produced this response."* Gemini's own thinking blocks become the cognitive nodes. `traceQuality: "inferred_via_gemini"`. A `disclaimer` field records that the trace is inferred, not native.
+
+### Fallback
+
+If `GOOGLE_AI_API_KEY` is not configured, a SHA-256 hash of the final output is recorded as a single node. `traceQuality: "output_hash"`.
+
+### Why this matters for Art. 12
+
+Article 12 requires logging of AI system operations to a level of detail sufficient to assess compliance. Capturing the reasoning chain — not just inputs and outputs — provides evidence of the cognitive process that produced the decision.
+
+---
 
 ## Implementation guide
 
