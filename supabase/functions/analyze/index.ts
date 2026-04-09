@@ -121,7 +121,9 @@ serve(async (req) => {
             complexityScore: parseFloat(Math.min(1, edges.length / (nodes.length || 1)).toFixed(2)),
           },
           cognitiveHash,
-          traceSource: traceQuality === "native" ? "native_thinking" : "inferred_via_gemini",
+          traceSource: traceQuality === "native" ? "native_thinking"
+            : traceQuality === "native_thinking" ? "claude_extended_thinking"
+            : "inferred_via_gemini",
           traceQuality: traceQuality ?? "inferred_via_gemini",
           ...(traceQuality === "inferred_via_gemini" ? {
             disclaimer: "Raisonnement inféré par analyse comparative Gemini Thinking — non natif",

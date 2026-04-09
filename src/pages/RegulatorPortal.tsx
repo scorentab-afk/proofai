@@ -59,7 +59,7 @@ interface ComplianceReport {
     accessLevel: 'public' | 'metadata_only' | 'full';
     hint?: string;
     timeline?: Array<{ event: string; hash: string; timestamp: string }>;
-    traceQuality?: 'native' | 'inferred_via_gemini' | 'output_hash' | null;
+    traceQuality?: 'native' | 'native_thinking' | 'inferred_via_gemini' | 'output_hash' | null;
     traceSource?: string | null;
     cognitiveNodes?: Array<{
       id: string;
@@ -593,11 +593,14 @@ export default function RegulatorPortal() {
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                             report.content.traceQuality === 'native'
                               ? 'bg-green-100 text-green-700'
+                              : report.content.traceQuality === 'native_thinking'
+                              ? 'bg-indigo-100 text-indigo-800'
                               : report.content.traceQuality === 'inferred_via_gemini'
                               ? 'bg-blue-100 text-blue-700'
                               : 'bg-gray-100 text-gray-500'
                           }`}>
                             {report.content.traceQuality === 'native' && '● Tier 1 — native'}
+                            {report.content.traceQuality === 'native_thinking' && '● Raisonnement natif Claude Extended Thinking'}
                             {report.content.traceQuality === 'inferred_via_gemini' && '● Tier 2 — via Gemini'}
                             {report.content.traceQuality === 'output_hash' && '● output hash only'}
                           </span>
@@ -634,9 +637,13 @@ export default function RegulatorPortal() {
                                   )}
                                   {node.traceSource ? (
                                     <span className={`text-[10px] font-medium ${
-                                      node.traceSource === 'native_thinking' ? 'text-green-500' : 'text-blue-400'
+                                      node.traceSource === 'native_thinking' ? 'text-green-500'
+                                      : node.traceSource === 'claude_extended_thinking' ? 'text-indigo-600'
+                                      : 'text-blue-400'
                                     }`}>
-                                      {node.traceSource === 'native_thinking' ? 'native' : 'inferred'}
+                                      {node.traceSource === 'native_thinking' ? 'native'
+                                        : node.traceSource === 'claude_extended_thinking' ? 'claude extended thinking'
+                                        : 'inferred'}
                                     </span>
                                   ) : report.content?.provider ? (
                                     <span className={`text-[10px] font-medium ${

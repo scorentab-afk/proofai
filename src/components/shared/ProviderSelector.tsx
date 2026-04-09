@@ -35,16 +35,16 @@ const PROVIDERS: ProviderOption[] = [
   {
     id: 'anthropic',
     name: 'Claude Sonnet 4',
-    description: 'Structured reasoning via enhanced prompts',
-    isPremium: false,
-    pricePerCert: 0.08,
+    description: 'Extended Thinking natif — raisonnement interne certifié',
+    isPremium: true,
+    pricePerCert: 0.15,
     features: [
-      'XML reasoning trace',
-      'Step-by-step analysis',
-      'Excellent quality',
-      'Cost-effective'
+      'Native CoT ✓',
+      'Extended Thinking blocks',
+      'Thought signatures cryptographiques',
+      'Recommandé finance / légal'
     ],
-    traceQuality: 'structured',
+    traceQuality: 'native',
     icon: Cpu
   },
   {

@@ -21,7 +21,7 @@ interface ReasoningStep {
   thought_signature?: string;
 }
 
-type TraceQuality = "native" | "inferred_via_gemini" | "output_hash";
+type TraceQuality = "native" | "native_thinking" | "inferred_via_gemini" | "output_hash";
 
 interface ExecuteResult {
   output: string;
@@ -133,17 +133,22 @@ async function callAnthropic(prompt: string, options: Record<string, unknown>): 
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
+  const budgetTokens = 5000;
+  const maxTokens = Math.max((options.maxTokens as number) || 1024, budgetTokens + 1024);
+
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "interleaved-thinking-2025-05-14",
       "content-type": "application/json",
     },
     body: JSON.stringify({
       model: (!options.modelId || options.modelId === "auto") ? "claude-sonnet-4-20250514" : (options.modelId as string),
-      max_tokens: (options.maxTokens as number) || 1024,
-      temperature: (options.temperature as number) ?? 0.7,
+      max_tokens: maxTokens,
+      temperature: 1, // required when extended thinking is enabled
+      thinking: { type: "enabled", budget_tokens: budgetTokens },
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -154,24 +159,33 @@ async function callAnthropic(prompt: string, options: Record<string, unknown>): 
   }
 
   const data = await res.json();
-  const output = data.content?.[0]?.text ?? "";
+  const content: Array<{ type: string; thinking?: string; text?: string }> = data.content ?? [];
+
+  // Extract native thinking blocks
+  const thinkingBlocks = content.filter(b => b.type === "thinking");
+  const output = content.filter(b => b.type === "text").map(b => b.text ?? "").join("");
   const inputTokens = data.usage?.input_tokens ?? 0;
   const outputTokens = data.usage?.output_tokens ?? 0;
 
-  // Tier 2: infer reasoning via Gemini Thinking
-  let trace: ReasoningStep[];
-  let traceQuality: TraceQuality;
-  try {
-    trace = await inferReasoningViaGemini(prompt, output, "Anthropic Claude");
-    traceQuality = "inferred_via_gemini";
-  } catch {
-    // Fallback if Gemini key not set or inference fails
-    const sig = await sha256(output);
-    trace = [{ step_index: 0, type: "text", content: output, thought_signature: sig }];
-    traceQuality = "output_hash";
+  const trace: ReasoningStep[] = [];
+  for (let i = 0; i < thinkingBlocks.length; i++) {
+    const thinking = thinkingBlocks[i].thinking ?? "";
+    const sig = await sha256(thinking);
+    trace.push({ step_index: i, type: "reasoning", content: thinking, thought_signature: sig });
   }
 
-  return { output, trace, tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens }, traceQuality };
+  // Fallback: if no thinking blocks, hash the output
+  if (trace.length === 0) {
+    const sig = await sha256(output);
+    trace.push({ step_index: 0, type: "text", content: output, thought_signature: sig });
+  }
+
+  return {
+    output,
+    trace,
+    tokens: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens },
+    traceQuality: trace.length > 0 && thinkingBlocks.length > 0 ? "native_thinking" : "output_hash",
+  };
 }
 
 async function callOpenAI(prompt: string, options: Record<string, unknown>): Promise<ExecuteResult> {
