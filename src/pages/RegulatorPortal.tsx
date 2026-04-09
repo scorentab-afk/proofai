@@ -565,11 +565,31 @@ export default function RegulatorPortal() {
                       </div>
                     )}
 
-                    {/* Cognitive analysis — trace quality badge + real nodes */}
-                    {report.content?.traceQuality && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <p className="text-xs text-gray-500">Analyse cognitive</p>
+                    {/* Cognitive analysis — provider badge + trace quality + nodes */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <p className="text-xs text-gray-500">Analyse cognitive</p>
+
+                        {/* Provider badge */}
+                        {report.content?.provider && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            report.content.provider === 'gemini'
+                              ? 'bg-blue-50 text-blue-600 border-blue-200'
+                              : report.content.provider === 'anthropic'
+                              ? 'bg-orange-50 text-orange-600 border-orange-200'
+                              : report.content.provider === 'openai'
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                              : 'bg-gray-50 text-gray-500 border-gray-200'
+                          }`}>
+                            {report.content.provider === 'gemini' && '✦ Gemini'}
+                            {report.content.provider === 'anthropic' && '◆ Anthropic'}
+                            {report.content.provider === 'openai' && '● OpenAI'}
+                            {!['gemini', 'anthropic', 'openai'].includes(report.content.provider) && report.content.provider}
+                          </span>
+                        )}
+
+                        {/* Trace quality badge */}
+                        {report.content?.traceQuality && (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                             report.content.traceQuality === 'native'
                               ? 'bg-green-100 text-green-700'
@@ -578,53 +598,64 @@ export default function RegulatorPortal() {
                               : 'bg-gray-100 text-gray-500'
                           }`}>
                             {report.content.traceQuality === 'native' && '● Tier 1 — native'}
-                            {report.content.traceQuality === 'inferred_via_gemini' && '● Tier 2 — inferred via Gemini'}
+                            {report.content.traceQuality === 'inferred_via_gemini' && '● Tier 2 — via Gemini'}
                             {report.content.traceQuality === 'output_hash' && '● output hash only'}
                           </span>
-                          {report.content.cognitiveMetrics && (
-                            <span className="text-[10px] text-gray-400">
-                              {report.content.cognitiveMetrics.nodeCount} nœuds · consistance {Math.round(report.content.cognitiveMetrics.consistencyScore * 100)}%
-                            </span>
-                          )}
-                        </div>
-
-                        {report.content.disclaimer && (
-                          <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3 italic">
-                            ⚠ {report.content.disclaimer}
-                          </p>
                         )}
 
-                        {report.content.cognitiveNodes && report.content.cognitiveNodes.length > 0 && (
-                          <div className="space-y-2">
-                            {report.content.cognitiveNodes.map((node, i) => (
-                              <div key={node.id} className="flex items-start gap-3 text-xs">
-                                <span className="h-5 w-5 rounded-full bg-[#185FA5]/10 text-[#185FA5] font-bold flex items-center justify-center shrink-0 mt-0.5 text-[10px]">
-                                  {i + 1}
-                                </span>
-                                <div className="flex-1 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 space-y-1">
-                                  <p className="font-medium text-gray-700">{node.label}</p>
-                                  {node.content && node.content !== node.label && (
-                                    <p className="text-gray-500 leading-relaxed">{node.content}</p>
-                                  )}
-                                  <div className="flex items-center gap-3 pt-0.5">
-                                    {node.hash && (
-                                      <span className="font-mono text-gray-300 text-[10px]">{node.hash.substring(0, 20)}…</span>
-                                    )}
-                                    {node.traceSource && (
-                                      <span className={`text-[10px] font-medium ${
-                                        node.traceSource === 'native_thinking' ? 'text-green-500' : 'text-blue-400'
-                                      }`}>
-                                        {node.traceSource === 'native_thinking' ? 'native' : 'inferred'}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                        {report.content?.cognitiveMetrics && (
+                          <span className="text-[10px] text-gray-400">
+                            {report.content.cognitiveMetrics.nodeCount} nœuds · consistance {Math.round(report.content.cognitiveMetrics.consistencyScore * 100)}%
+                          </span>
                         )}
                       </div>
-                    )}
+
+                      {report.content?.disclaimer && (
+                        <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3 italic">
+                          ⚠ {report.content.disclaimer}
+                        </p>
+                      )}
+
+                      {report.content?.cognitiveNodes && report.content.cognitiveNodes.length > 0 ? (
+                        <div className="space-y-2">
+                          {report.content.cognitiveNodes.map((node, i) => (
+                            <div key={node.id} className="flex items-start gap-3 text-xs">
+                              <span className="h-5 w-5 rounded-full bg-[#185FA5]/10 text-[#185FA5] font-bold flex items-center justify-center shrink-0 mt-0.5 text-[10px]">
+                                {i + 1}
+                              </span>
+                              <div className="flex-1 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 space-y-1">
+                                <p className="font-medium text-gray-700">{node.label}</p>
+                                {node.content && node.content !== node.label && (
+                                  <p className="text-gray-500 leading-relaxed">{node.content}</p>
+                                )}
+                                <div className="flex items-center gap-3 pt-0.5">
+                                  {node.hash && (
+                                    <span className="font-mono text-gray-300 text-[10px]">{node.hash.substring(0, 20)}…</span>
+                                  )}
+                                  {node.traceSource ? (
+                                    <span className={`text-[10px] font-medium ${
+                                      node.traceSource === 'native_thinking' ? 'text-green-500' : 'text-blue-400'
+                                    }`}>
+                                      {node.traceSource === 'native_thinking' ? 'native' : 'inferred'}
+                                    </span>
+                                  ) : report.content?.provider ? (
+                                    <span className={`text-[10px] font-medium ${
+                                      report.content.provider === 'gemini' ? 'text-blue-400'
+                                      : report.content.provider === 'anthropic' ? 'text-orange-400'
+                                      : 'text-emerald-400'
+                                    }`}>
+                                      {report.content.provider}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-gray-400 italic">Aucun nœud cognitif disponible pour ce bundle</p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="px-6 py-12 text-center">

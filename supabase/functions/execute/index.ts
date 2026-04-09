@@ -38,15 +38,21 @@ async function extractGeminiThinking(
   promptText: string,
   temperature: number,
   maxOutputTokens: number,
+  model = "gemini-2.5-flash",
 ): Promise<{ thinking: ReasoningStep[]; output: string; inputTokens: number; outputTokens: number; thoughtsTokens: number }> {
+  const isThinkingModel = model.startsWith("gemini-2.5");
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-1219:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { temperature, maxOutputTokens },
+        generationConfig: {
+          temperature,
+          maxOutputTokens,
+          ...(isThinkingModel ? { thinkingConfig: { includeThoughts: true } } : {}),
+        },
       }),
     }
   );
@@ -112,6 +118,7 @@ async function inferReasoningViaGemini(
     inferencePrompt,
     0.3,   // low temperature for analytical reconstruction
     8192,
+    "gemini-2.0-flash",  // stable fallback for Tier 2 inference
   );
 
   // Re-index steps (they may come from a multi-block thinking response)

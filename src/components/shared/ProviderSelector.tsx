@@ -19,8 +19,8 @@ interface ProviderOption {
 const PROVIDERS: ProviderOption[] = [
   {
     id: 'gemini',
-    name: 'Gemini 2.0 Flash Thinking',
-    description: 'Native thought signatures - Maximum cognitive traceability',
+    name: 'Gemini 2.5 Flash',
+    description: 'Native chain-of-thought — Maximum cognitive traceability',
     isPremium: true,
     pricePerCert: 0.15,
     features: [
@@ -176,7 +176,7 @@ export function ProviderSelector({ value, onChange }: Props) {
 export const getModelForProvider = (provider: AIProvider): string => {
   switch (provider) {
     case 'gemini':
-      return 'gemini-2.0-flash-thinking-exp-1219';
+      return 'gemini-2.5-flash';
     case 'anthropic':
       return 'claude-sonnet-4-20250514';
     case 'openai':
