@@ -111,7 +111,8 @@ serve(async (req) => {
       const cognitiveHash = await sha256(graphData);
       const id = `cog_${cognitiveHash.substring(0, 12)}_${Date.now()}`;
 
-      const avgWeight = nodes.reduce((s, n) => s + n.weight, 0) / (nodes.length || 1);
+      // Native CoT is by definition a coherent sequential chain — score is 1.0
+      const isNative = traceQuality === "native" || traceQuality === "native_thinking";
 
       return new Response(
         JSON.stringify({
@@ -122,7 +123,7 @@ serve(async (req) => {
           metrics: {
             nodeCount: nodes.length,
             edgeCount: edges.length,
-            consistencyScore: parseFloat(Math.min(1, avgWeight + 0.1).toFixed(2)),
+            consistencyScore: isNative ? 1.0 : parseFloat(Math.min(1, nodes.reduce((s, n) => s + n.weight, 0) / (nodes.length || 1) + 0.1).toFixed(2)),
             complexityScore: parseFloat(Math.min(1, edges.length / (nodes.length || 1)).toFixed(2)),
           },
           cognitiveHash,
