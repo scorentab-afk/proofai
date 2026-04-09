@@ -71,6 +71,10 @@ serve(async (req) => {
         }
       }
 
+      const nodeTraceSource = traceQuality === "native" ? "native_thinking"
+        : traceQuality === "native_thinking" ? "claude_extended_thinking"
+        : "inferred_via_gemini";
+
       // Build cognitive nodes
       const nodes = await Promise.all(
         rawNodes.map(async (item, i) => {
@@ -87,6 +91,7 @@ serve(async (req) => {
             // Weight = relative length (longer reasoning = higher weight, capped at 1)
             weight: parseFloat(Math.min(1, content.length / 500).toFixed(2)),
             thought_signature: sig,
+            traceSource: nodeTraceSource,
           };
         })
       );
