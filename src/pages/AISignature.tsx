@@ -66,7 +66,7 @@ Would you like me to help you rebook on one of these alternatives?`,
   temperature: '0.4',
   maxTokens: '4096',
   requesterName: 'Demo User',
-  requesterOrg: 'CogniEvidence Labs',
+  requesterOrg: 'proofAI Labs',
 };
 
 const AISignature = () => {
@@ -86,7 +86,7 @@ const AISignature = () => {
   const [rawOutput, setRawOutput] = useState('');
   const [modelProvider, setModelProvider] = useState('openai');
   const [modelId, setModelId] = useState('gpt-4');
-  const [modelVersion, setModelVersion] = useState('2024-01-01');
+  const [modelVersion, setModelVersion] = useState('');
   const [temperature, setTemperature] = useState('0.7');
   const [maxTokens, setMaxTokens] = useState('2048');
   const [requesterName, setRequesterName] = useState('');
@@ -121,7 +121,7 @@ const AISignature = () => {
         rawOutput: output,
         modelProvider: modelProvider || 'openai',
         modelId: modelId || 'gpt-4',
-        modelVersion: modelVersion || '2024-01-01',
+        modelVersion: modelVersion || 'latest',
         modelParameters: { temperature: 0.7, max_tokens: 2048 },
         executionMetrics: { latency_ms: 300, tokens_used: 500 },
         requesterInfo: { name: 'ProofAI Pipeline', organization: 'Auto' },
@@ -366,7 +366,7 @@ const AISignature = () => {
                   className="w-full border-dashed border-primary/50 text-primary hover:bg-primary/10"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  Charger données démo (Gemini)
+                  Load Gemini demo data
                 </Button>
               </div>
               <CardContent className="space-y-4">
@@ -428,7 +428,7 @@ const AISignature = () => {
                   <Label htmlFor="modelVersion">Model Version</Label>
                   <Input
                     id="modelVersion"
-                    placeholder="2024-01-01"
+                    placeholder="e.g. 2025-04"
                     value={modelVersion}
                     onChange={(e) => setModelVersion(e.target.value)}
                   />
@@ -864,12 +864,6 @@ const AISignature = () => {
                             <div className="flex items-center gap-2">
                               <div className="w-4 h-4 rounded-full bg-purple-500" />
                               Polygon (Recommended)
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="ethereum">
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 rounded-full bg-blue-500" />
-                              Ethereum Mainnet
                             </div>
                           </SelectItem>
                         </SelectContent>

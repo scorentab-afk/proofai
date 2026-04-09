@@ -28,6 +28,14 @@ serve(async (req) => {
       });
     }
 
+    // Blockchain anchoring requires Pay-as-you-go or higher
+    if (auth.plan === "free" && auth.userId !== "") {
+      return new Response(
+        JSON.stringify({ error: "Blockchain anchoring requires Pay-as-you-go plan or higher", upgrade: true }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { bundleId, network = "polygon" } = await req.json();
 
     if (!bundleId) {

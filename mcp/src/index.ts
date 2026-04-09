@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const API_BASE = process.env.PROOFAI_API_URL || "https://apzgbajvwzykygrxxrwm.supabase.co/functions/v1";
 const API_KEY = process.env.PROOFAI_API_KEY || "";
-const ANON_KEY = process.env.PROOFAI_ANON_KEY || "";
+const ANON_KEY = process.env.PROOFAI_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwemdiYWp2d3p5a3lncnh4cndtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MjU4ODksImV4cCI6MjA5MDIwMTg4OX0.iUxPxRxk8G2kNrtLnL_pSB-V7DE7cSclfpmsdP-FIJg";
 
 async function callAPI(path: string, body: Record<string, unknown>): Promise<unknown> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -109,7 +109,9 @@ server.tool(
       const traceQuality = execution.trace_quality ?? "output_hash";
       const traceLabel =
         traceQuality === "native"
-          ? `native (Gemini 2.0 Flash Thinking — ${analysis.metrics.nodeCount} real thinking blocks)`
+          ? `native (Gemini 2.5 Flash Extended Thinking — ${analysis.metrics.nodeCount} real thinking blocks)`
+          : traceQuality === "native_thinking"
+          ? `native_thinking (Claude Extended Thinking — ${analysis.metrics.nodeCount} real thinking blocks)`
           : traceQuality === "inferred_via_gemini"
           ? `inferred_via_gemini (reconstructed from ${execution.metadata.provider} response — ${analysis.metrics.nodeCount} steps)`
           : `output_hash (${analysis.metrics.nodeCount} node)`;

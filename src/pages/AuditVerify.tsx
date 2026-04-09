@@ -182,7 +182,7 @@ export default function AuditVerify() {
                             },
                             modelInfo: {
                               provider: 'Gemini',
-                              modelId: 'gemini-2.0-flash-thinking-exp',
+                              modelId: 'gemini-2.5-flash',
                               version: '2025-01',
                             },
                             signatureInfo: {
@@ -253,7 +253,7 @@ export default function AuditVerify() {
               </Card>
 
               {/* Ledger Information */}
-              {result.ledgerInfo && (
+              {result.ledgerInfo && result.ledgerInfo.blockNumber !== 0 && (
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">

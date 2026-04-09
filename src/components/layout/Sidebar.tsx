@@ -63,7 +63,7 @@ function SidebarContent({ collapsed, setCollapsed, onNavigate }: {
               className="overflow-hidden"
             >
               <span className="text-lg font-semibold text-sidebar-foreground whitespace-nowrap">
-                CogniEvidence
+                proofAI
               </span>
             </motion.div>
           )}
@@ -150,7 +150,7 @@ function SidebarContent({ collapsed, setCollapsed, onNavigate }: {
             className="px-4 pb-4"
           >
             <div className="rounded-lg bg-sidebar-accent/50 px-3 py-2 text-xs text-sidebar-muted">
-              <span className="font-medium">v1.0.0</span> · Demo Mode
+              <span className="font-medium">v1.0.0</span>
             </div>
           </motion.div>
         )}

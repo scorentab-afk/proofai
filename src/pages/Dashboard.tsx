@@ -100,7 +100,7 @@ export default function Dashboard() {
         >
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTZ2Nmg2di02em0tNi02aC02djZoNnYtNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
           <div className="relative z-10">
-            <h2 className="text-xl md:text-2xl font-bold mb-2">Welcome to CogniEvidence</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-2">Welcome to proofAI</h2>
             <p className="text-white/80 max-w-xl mb-4 md:mb-6 text-sm md:text-base">
               Create verifiable AI evidence chains with blockchain-anchored cognitive analysis. 
               Build trust and transparency in AI operations.

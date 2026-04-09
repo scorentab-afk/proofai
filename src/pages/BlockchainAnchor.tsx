@@ -24,14 +24,6 @@ const networks = [
     avgTime: '~5 seconds',
     avgCost: '~$0.01',
   },
-  {
-    id: 'ethereum',
-    name: 'Ethereum',
-    description: 'Most secure & decentralized',
-    icon: '💎',
-    avgTime: '~15 seconds',
-    avgCost: '~$2-10',
-  },
 ];
 
 export default function BlockchainAnchor() {
@@ -43,7 +35,7 @@ export default function BlockchainAnchor() {
   const autoRun = isAutoRun(searchParams);
 
   const [bundleId, setBundleId] = useState('');
-  const [network, setNetwork] = useState<'polygon' | 'ethereum'>('polygon');
+  const [network, setNetwork] = useState<'polygon'>('polygon');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BlockchainAnchorResult | null>(null);
 
@@ -119,7 +111,7 @@ export default function BlockchainAnchor() {
                 <Label>Blockchain Network</Label>
                 <RadioGroup
                   value={network}
-                  onValueChange={(val) => setNetwork(val as 'polygon' | 'ethereum')}
+                  onValueChange={(val) => setNetwork(val as 'polygon')}
                   className="space-y-3"
                 >
                   {networks.map((net) => (
@@ -130,7 +122,7 @@ export default function BlockchainAnchor() {
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-muted-foreground/50'
                       }`}
-                      onClick={() => setNetwork(net.id as 'polygon' | 'ethereum')}
+                      onClick={() => setNetwork(net.id as 'polygon')}
                     >
                       <RadioGroupItem value={net.id} id={net.id} className="mt-1" />
                       <div className="flex-1">

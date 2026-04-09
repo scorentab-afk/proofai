@@ -19,8 +19,7 @@ const plans = [
     features: [
       { name: '100 proofs total', included: true },
       { name: 'All providers (Claude, GPT, Gemini)', included: true },
-      { name: 'Ed25519 signing', included: true },
-      { name: 'Blockchain anchoring', included: true },
+      { name: 'Ed25519 signature · No blockchain', included: true },
       { name: 'Cognitive analysis', included: true },
       { name: 'Verify bundles', included: true },
     ],
@@ -74,7 +73,7 @@ const plans = [
       { name: '2,000 proofs/month included', included: true },
       { name: 'Overage: 0.03/proof', included: true },
       { name: 'All providers', included: true },
-      { name: 'Full pipeline + RAG tracking', included: true },
+      { name: 'Full pipeline', included: true },
       { name: 'Post-market monitoring', included: true },
       { name: 'Priority support', included: true },
     ],
@@ -92,8 +91,8 @@ const plans = [
       { name: '10,000 proofs/month included', included: true },
       { name: 'Overage: 0.02/proof', included: true },
       { name: 'All providers', included: true },
-      { name: 'Full pipeline + RAG + SSO', included: true },
-      { name: 'SLA 99.9%', included: true },
+      { name: 'Full pipeline + SSO', included: true },
+      { name: 'High availability', included: true },
       { name: 'Dedicated support', included: true },
     ],
   },
@@ -195,6 +194,11 @@ export default function Pricing() {
                         ? 'Get API key'
                         : 'Subscribe'}
                     </Button>
+                    {plan.id === 'free' && (
+                      <p className="text-[11px] text-muted-foreground text-center mt-2">
+                        Blockchain anchoring from €0.05/proof
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
