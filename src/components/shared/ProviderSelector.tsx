@@ -10,7 +10,6 @@ interface ProviderOption {
   name: string;
   description: string;
   isPremium: boolean;
-  pricePerCert: number;
   features: string[];
   traceQuality: 'native' | 'structured';
   icon: typeof Brain;
@@ -20,48 +19,45 @@ const PROVIDERS: ProviderOption[] = [
   {
     id: 'gemini',
     name: 'Gemini 2.5 Flash',
-    description: 'Native chain-of-thought — Maximum cognitive traceability',
+    description: 'Native chain-of-thought — maximum cognitive traceability',
     isPremium: true,
-    pricePerCert: 0.15,
     features: [
       'Native thought signatures',
       'Function call tracing',
       'Multi-step reasoning',
-      'Recommended for legal/medical/finance'
+      'Recommended for legal / medical / finance',
     ],
     traceQuality: 'native',
-    icon: Brain
+    icon: Brain,
   },
   {
     id: 'anthropic',
     name: 'Claude Sonnet 4',
     description: 'Extended Thinking natif — raisonnement interne certifié',
     isPremium: true,
-    pricePerCert: 0.15,
     features: [
-      'Native CoT ✓',
+      'Native CoT',
       'Extended Thinking blocks',
       'Thought signatures cryptographiques',
-      'Recommandé finance / légal'
+      'Recommandé finance / légal',
     ],
     traceQuality: 'native',
-    icon: Cpu
+    icon: Cpu,
   },
   {
     id: 'openai',
     name: 'GPT-4 Turbo',
-    description: 'Markdown structured reasoning',
+    description: 'Structured reasoning with clear step breakdown',
     isPremium: false,
-    pricePerCert: 0.08,
     features: [
       'Markdown reasoning trace',
       'Clear step breakdown',
       'Excellent quality',
-      'Widely compatible'
+      'Widely compatible',
     ],
     traceQuality: 'structured',
-    icon: Zap
-  }
+    icon: Zap,
+  },
 ];
 
 interface Props {
@@ -78,48 +74,37 @@ export function ProviderSelector({ value, onChange }: Props) {
           Choose AI Provider
         </CardTitle>
         <CardDescription>
-          Select the AI provider for your certification. Premium providers offer native thought signatures.
+          Select the provider for this certification. Native providers expose real thinking blocks.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-3">
           {PROVIDERS.map((provider) => {
             const Icon = provider.icon;
             const isSelected = value === provider.id;
-            
+
             return (
               <div
                 key={provider.id}
                 onClick={() => onChange(provider.id)}
                 className={cn(
-                  "relative cursor-pointer rounded-xl border-2 p-4 transition-all hover:shadow-md",
+                  'relative cursor-pointer rounded-xl border-2 p-4 transition-all hover:shadow-md',
                   isSelected
-                    ? "border-primary bg-primary/5 shadow-md"
-                    : "border-border hover:border-primary/50"
+                    ? 'border-primary bg-primary/5 shadow-md'
+                    : 'border-border hover:border-primary/50'
                 )}
               >
-                {/* Header */}
+                {/* Header row */}
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "rounded-lg p-2",
-                      provider.isPremium 
-                        ? "bg-gradient-to-br from-amber-500/20 to-orange-500/20" 
-                        : "bg-muted"
-                    )}>
-                      <Icon className={cn(
-                        "h-5 w-5",
-                        provider.isPremium ? "text-amber-600" : "text-muted-foreground"
-                      )} />
-                    </div>
-                    {provider.isPremium && (
-                      <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        Premium
-                      </Badge>
-                    )}
+                  <div className={cn(
+                    'rounded-lg p-2',
+                    provider.isPremium ? 'bg-amber-500/10' : 'bg-muted'
+                  )}>
+                    <Icon className={cn(
+                      'h-5 w-5',
+                      provider.isPremium ? 'text-amber-600' : 'text-muted-foreground'
+                    )} />
                   </div>
-                  
                   {isSelected && (
                     <div className="rounded-full bg-primary p-1">
                       <Check className="h-3 w-3 text-primary-foreground" />
@@ -127,42 +112,38 @@ export function ProviderSelector({ value, onChange }: Props) {
                   )}
                 </div>
 
-                {/* Name & Description */}
-                <h4 className="font-semibold text-sm mb-1">{provider.name}</h4>
-                <p className="text-xs text-muted-foreground mb-3">{provider.description}</p>
-
-                {/* Pricing */}
-                <div className="mb-3 pb-3 border-b border-border">
-                  <span className="text-2xl font-bold text-foreground">
-                    €{provider.pricePerCert}
-                  </span>
-                  <span className="text-xs text-muted-foreground">/certification</span>
+                {/* Name + badge */}
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-semibold text-sm">{provider.name}</h4>
+                  {provider.isPremium && (
+                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-1.5 py-0">
+                      <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                      Premium
+                    </Badge>
+                  )}
                 </div>
+
+                {/* Description */}
+                <p className="text-xs text-muted-foreground mb-3 leading-snug">{provider.description}</p>
 
                 {/* Features */}
                 <ul className="space-y-1.5 mb-3">
                   {provider.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                    <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Check className="h-3 w-3 text-green-500 flex-shrink-0 mt-0.5" />
                       {feature}
                     </li>
                   ))}
                 </ul>
 
-                {/* Quality indicator */}
-                <div className="pt-2 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Trace Quality:</span>
-                    {provider.traceQuality === 'native' ? (
-                      <span className="text-xs font-medium text-amber-600">
-                        ⭐⭐⭐⭐⭐ Native
-                      </span>
-                    ) : (
-                      <span className="text-xs font-medium text-blue-600">
-                        ⭐⭐⭐⭐ Structured
-                      </span>
-                    )}
-                  </div>
+                {/* Trace quality */}
+                <div className="pt-2 border-t border-border flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Trace Quality</span>
+                  {provider.traceQuality === 'native' ? (
+                    <span className="text-xs font-semibold text-amber-600">⭐⭐⭐⭐⭐ Native</span>
+                  ) : (
+                    <span className="text-xs font-semibold text-blue-600">⭐⭐⭐⭐ Structured</span>
+                  )}
                 </div>
               </div>
             );
@@ -175,12 +156,9 @@ export function ProviderSelector({ value, onChange }: Props) {
 
 export const getModelForProvider = (provider: AIProvider): string => {
   switch (provider) {
-    case 'gemini':
-      return 'gemini-2.5-flash';
-    case 'anthropic':
-      return 'claude-sonnet-4-20250514';
-    case 'openai':
-      return 'gpt-4-turbo';
+    case 'gemini':    return 'gemini-2.5-flash';
+    case 'anthropic': return 'claude-sonnet-4-20250514';
+    case 'openai':    return 'gpt-4-turbo';
   }
 };
 
