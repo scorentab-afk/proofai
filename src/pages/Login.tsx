@@ -61,10 +61,10 @@ export default function Login() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary mb-4">
-            <Shield className="h-7 w-7 text-white" />
+          <div className="inline-flex h-16 w-16 items-center justify-center mb-4">
+            <img src="/logo.svg" alt="proofAI" className="h-16 w-16 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold">ProofAI</h1>
+          <h1 className="text-2xl font-bold">proofAI</h1>
           <p className="text-sm text-muted-foreground mt-1">
             AI Cognitive Evidence Platform
           </p>

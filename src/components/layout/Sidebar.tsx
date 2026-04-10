@@ -51,8 +51,8 @@ function SidebarContent({ collapsed, setCollapsed, onNavigate }: {
     <>
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 px-4 border-b border-sidebar-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary">
-          <Brain className="h-5 w-5 text-white" />
+        <div className="flex h-9 w-9 items-center justify-center">
+          <img src="/logo.svg" alt="proofAI" className="h-9 w-9 object-contain" />
         </div>
         <AnimatePresence>
           {!collapsed && (
