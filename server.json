@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.scorentab-afk/proofai",
+  "title": "ProofAI",
+  "description": "EU AI Act compliance — cryptographic proof of AI decisions on Polygon blockchain",
+  "version": "1.0.1",
+  "websiteUrl": "https://proofai-ochre.vercel.app",
+  "repository": {
+    "url": "https://github.com/proof-ai/proofai.git",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@proofai/mcp-server",
+      "version": "1.0.1",
+      "runtimeHint": "npx",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "PROOFAI_API_KEY",
+          "isRequired": false,
+          "isSecret": true,
+          "description": "ProofAI API key (pk_live_...). Optional — anon access included."
+        }
+      ]
+    },
+    {
+      "registryType": "url",
+      "identifier": "https://proofai-ochre.vercel.app/api/mcp",
+      "transport": {
+        "type": "streamable-http",
+        "url": "https://proofai-ochre.vercel.app/api/mcp"
+      }
+    }
+  ]
+}
