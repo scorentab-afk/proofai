@@ -31,3 +31,8 @@ dist-ssr
 # Supabase
 supabase/.temp/
 .vercel
+
+# Ed25519 key files — never commit
+.ed25519-private-key.txt
+.ed25519-public-key.txt
+.legacy_bundles_backup_20260412.json
