@@ -1,6 +1,19 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.12";
 import { authenticateRequest, recordProofEvent } from "../_shared/auth-middleware.ts";
+import * as ed from "https://esm.sh/@noble/ed25519@2.1.0";
+import { sha512 } from "https://esm.sh/@noble/hashes@1.7.2/sha512";
+
+// @noble/ed25519 v2 requires an explicit sha512 implementation
+ed.etc.sha512Sync = (...m: Parameters<typeof sha512>) => sha512(...m);
+
+function hexToBytes(hex: string): Uint8Array {
+  return new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,7 +60,7 @@ serve(async (req) => {
       );
     }
 
-    const { promptId, executionId, analysisId, signatureId, cognitiveHash, subjectId, sessionId, ragSources, promptContent, aiResponse, provider, model, analysisData } =
+    const { promptId, executionId, analysisId, signatureId, cognitiveHash, subjectId, sessionId, ragSources, promptContent, aiResponse, provider, model, analysisData, signatureHex, signerPubkey } =
       await req.json();
 
     if (!promptId || !executionId || !analysisId || !signatureId || !cognitiveHash) {
@@ -103,6 +116,25 @@ serve(async (req) => {
     }));
     const bundleId = `bnd_${bundleHash.substring(0, 12)}_${Date.now()}`;
 
+    // Sign the bundle_hash with ED25519_PRIVATE_KEY so the regulator portal can
+    // verify it independently: ed.verifyAsync(signature_hex, bundle_hash, signer_pubkey)
+    let finalSignatureHex: string | null = signatureHex || null;
+    let finalSignerPubkey: string | null = signerPubkey || null;
+    const privKeyHex = Deno.env.get("ED25519_PRIVATE_KEY");
+    if (privKeyHex && privKeyHex.trim().length === 64) {
+      try {
+        const privKey = hexToBytes(privKeyHex.trim());
+        const pubKey = await ed.getPublicKeyAsync(privKey);
+        // Sign the raw 32 bytes of bundle_hash so regulators can verify with:
+        // ed.verifyAsync(signature_hex, bundle_hash_hex, signer_pubkey_hex)
+        const sig = await ed.signAsync(bundleHash, privKey);
+        finalSignatureHex = bytesToHex(sig);
+        finalSignerPubkey = bytesToHex(pubKey);
+      } catch {
+        // Keep whatever was passed in from the pipeline
+      }
+    }
+
     // Store in Supabase if credentials available
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -131,6 +163,8 @@ serve(async (req) => {
         provider: provider || null,
         model: model || null,
         analysis_data: analysisData || null,
+        signature_hex: finalSignatureHex,
+        signer_pubkey: finalSignerPubkey,
       });
     }
 

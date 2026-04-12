@@ -40,7 +40,19 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ThoughtSignatureExtractor } from '@/lib/thought-signature';
 import { GeminiThoughtTrace } from '@/components/shared/GeminiThoughtTrace';
 import { ReasoningTrace, ReasoningStep } from '@/components/shared/ReasoningTrace';
-import { verifySignatureResponse, type VerificationResult as Ed25519VerificationResult } from '@/lib/ed25519-verify';
+import { verifyEd25519 } from '@/lib/ed25519-verify';
+
+type VerificationResult = {
+  valid: boolean;
+  verifiedAt: string;
+  errors?: string[];
+  details: {
+    signatureAlgorithm: string;
+    cognitiveTraceIncluded: boolean;
+    payloadHash: string;
+    chainHashValid?: boolean;
+  };
+};
 import { exportCognitiveTracePDF } from '@/lib/pdf-export';
 
 // Mock data for demo
@@ -157,7 +169,7 @@ const AISignature = () => {
 
   // Verification state
   const [verifySignatureId, setVerifySignatureId] = useState('');
-  const [verifyResult, setVerifyResult] = useState<Ed25519VerificationResult | null>(null);
+  const [verifyResult, setVerifyResult] = useState<VerificationResult | null>(null);
   const [verifyPayloadJson, setVerifyPayloadJson] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
@@ -298,9 +310,28 @@ const AISignature = () => {
       }
 
       // Perform Ed25519 verification
-      const result = await verifySignatureResponse(dataToVerify);
+      const sig = dataToVerify.signature;
+      const signatureHex = sig?.signature || '';
+      const pubkeyHex = import.meta.env.VITE_PROOFAI_ED25519_PUBKEY || '';
+      const msgBytes = new TextEncoder().encode(JSON.stringify(dataToVerify.signedPayload));
+      const msgHex = Array.from(msgBytes).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+      const payloadHashBuf = await crypto.subtle.digest('SHA-256', msgBytes);
+      const payloadHash = Array.from(new Uint8Array(payloadHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const valid = await verifyEd25519(signatureHex, msgHex, pubkeyHex);
+      const result: VerificationResult = {
+        valid,
+        verifiedAt: new Date().toISOString(),
+        errors: valid ? undefined : ['Ed25519 signature verification failed — signature or payload may be tampered'],
+        details: {
+          signatureAlgorithm: sig?.algorithm || 'Ed25519',
+          cognitiveTraceIncluded: !!dataToVerify.cognitive_trace,
+          payloadHash,
+          chainHashValid: chainValidation?.valid,
+        },
+      };
       setVerifyResult(result);
-      
+
       if (result.valid) {
         toast.success('Ed25519 signature verified successfully!');
       } else {

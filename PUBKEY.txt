@@ -1,0 +1,20 @@
+ProofAI Ed25519 Signer Public Key
+==================================
+
+Algorithm : Ed25519
+Public Key: 57e644ae45042127d0c6852bd66d377087aa5a648e3f14146f5c5c33e2a4e1fc
+Encoding  : 64-char lowercase hex (32 bytes)
+Version   : v1.3 (2026-04-10)
+
+Anyone can verify a ProofAI evidence bundle signature without trusting ProofAI:
+
+  import * as ed from '@noble/ed25519';
+  const valid = await ed.verifyAsync(bundle.signature_hex, bundle.bundle_hash, PUBKEY);
+
+Where:
+  bundle.signature_hex  — 128-char hex Ed25519 signature stored on the bundle
+  bundle.bundle_hash    — 64-char hex SHA-256 of the canonical bundle content
+  PUBKEY                — the 64-char hex public key above
+
+The private key lives exclusively in Supabase Edge Function Secrets (ED25519_PRIVATE_KEY).
+It never leaves the server. This public key is the only cryptographic material needed to verify.

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink, Lock, Unlock, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { verifyEd25519 } from '@/lib/ed25519-verify';
+import { PROOFAI_SIGNER_PUBKEY } from '@/lib/proofai-pubkey';
 
 // Deterministic JSON — mirrors stableStringify in bundle/index.ts.
 // Sorts all object keys alphabetically so that JSONB round-trips don't break the hash.
@@ -43,6 +45,8 @@ interface ComplianceReport {
   checks: ComplianceCheck[];
   summary: { passed: number; failed: number; notApplicable: number };
   bundleHash?: string | null;
+  signatureHex?: string | null;
+  signerPubkey?: string | null;
   rawBundle?: RawBundle;
   blockchainProof: {
     network: string;
@@ -90,7 +94,23 @@ export default function RegulatorPortal() {
   const [hashStatus, setHashStatus] = useState<'idle' | 'computing' | 'match' | 'mismatch'>('idle');
   const [computedHash, setComputedHash] = useState<string | null>(null);
 
+  // Ed25519 client-side verification state
+  const [ed25519Status, setEd25519Status] = useState<'idle' | 'verifying' | 'valid' | 'invalid' | 'legacy'>('idle');
+
   const isTokenValid = token.trim().startsWith('reg_');
+
+  // Run Ed25519 verification client-side whenever a report is loaded
+  useEffect(() => {
+    if (!report) { setEd25519Status('idle'); return; }
+    const sigHex = report.signatureHex;
+    const bundleHash = report.bundleHash;
+    if (!sigHex || !bundleHash) { setEd25519Status('legacy'); return; }
+    setEd25519Status('verifying');
+    const pubkey = report.signerPubkey || PROOFAI_SIGNER_PUBKEY;
+    verifyEd25519(sigHex, bundleHash, pubkey)
+      .then(valid => setEd25519Status(valid ? 'valid' : 'invalid'))
+      .catch(() => setEd25519Status('invalid'));
+  }, [report]);
 
   const handleVerify = async () => {
     const q = query.trim();
@@ -101,6 +121,7 @@ export default function RegulatorPortal() {
     setHashStatus('idle');
     setComputedHash(null);
     setJsonExpanded(false);
+    setEd25519Status('idle');
 
     const isTxHash = q.startsWith('0x');
     const headers: Record<string, string> = {
@@ -148,9 +169,12 @@ export default function RegulatorPortal() {
 
   const passCount = report?.checks.filter(c => c.status === 'pass').length ?? 0;
   const totalCount = report?.checks.length ?? 0;
-  const hasEd25519 = report?.checks.some(
-    c => c.article.toLowerCase().includes('19') && c.evidence?.toLowerCase().includes('ed25519') && c.status === 'pass'
-  );
+  const ed25519Label =
+    ed25519Status === 'valid' ? '✅ Ed25519'
+    : ed25519Status === 'invalid' ? '❌ Invalid'
+    : ed25519Status === 'verifying' ? '⏳ Checking…'
+    : ed25519Status === 'legacy' ? '— (legacy)'
+    : '—';
   const networkLabel = report?.blockchainProof?.network
     ? report.blockchainProof.network.charAt(0).toUpperCase() + report.blockchainProof.network.slice(1)
     : 'Polygon Mainnet';
@@ -318,7 +342,7 @@ export default function RegulatorPortal() {
                 {[
                   { label: 'Articles vérifiés', value: `${passCount}/${totalCount}` },
                   { label: 'Score cohérence', value: report.complianceScore?.replace('Score: ', '') ?? '—' },
-                  { label: 'Signature', value: hasEd25519 ? 'Ed25519' : '—' },
+                  { label: 'Signature', value: ed25519Label },
                   { label: 'Réseau', value: networkLabel },
                 ].map(card => (
                   <div key={card.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">

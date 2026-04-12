@@ -276,6 +276,9 @@ async function generateComplianceReport(
     },
     // Raw fields used for independent hash verification (always public — no content)
     bundleHash: bundle.bundle_hash || null,
+    // Ed25519 fields — public; allows any client to verify the signature independently
+    signatureHex: bundle.signature_hex || null,
+    signerPubkey: bundle.signer_pubkey || null,
     rawBundle: {
       promptId: bundle.prompt_id,
       executionId: bundle.execution_id,
