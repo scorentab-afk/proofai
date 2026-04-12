@@ -169,6 +169,10 @@ export default function AuditVerify() {
                   </div>
                   
                   {/* Export Certificate Button */}
+                  {/* TODO: bundleDetails, modelInfo, signatureInfo, decompressedInput, and
+                      aiOutput are not available in the VerificationResult type returned by
+                      api.verifyBundle(). A future API extension should return the full bundle
+                      payload so the PDF contains real data instead of placeholders. */}
                   {result.verified && (
                     <div className="mt-6 pt-4 border-t">
                       <Button
@@ -176,31 +180,31 @@ export default function AuditVerify() {
                           exportAuditCertificatePDF({
                             verificationResult: result,
                             bundleDetails: {
-                              bundleHash: `sha256_${result.bundleId.replace('id_', '')}`,
-                              cognitiveHash: `cognitive_${result.bundleId.substring(0, 20)}`,
+                              bundleHash: 'N/A — pending API extension',
+                              cognitiveHash: 'N/A — pending API extension',
                               createdAt: result.timestamp,
                             },
                             modelInfo: {
-                              provider: 'Gemini',
-                              modelId: 'gemini-2.5-flash',
-                              version: '2025-01',
+                              provider: 'N/A',
+                              modelId: 'N/A',
+                              version: 'N/A',
                             },
                             signatureInfo: {
-                              signatureId: `sig_${result.bundleId.substring(3, 15)}`,
+                              signatureId: 'N/A — pending API extension',
                               algorithm: 'Ed25519',
                               signedAt: result.timestamp,
-                              signerIdentity: 'ai-executor-service',
+                              signerIdentity: 'N/A',
                             },
-                            decompressedInput: 'Analyser les patterns cognitifs de la réponse IA et générer un graphe de connaissances avec validation cryptographique pour audit externe.',
-                            aiOutput: 'Après analyse cognitive multi-étapes avec signatures de pensée natives, les patterns indiquent une forte corrélation entre les paramètres d\'entrée et le schéma de sortie attendu. L\'embedding sémantique montre 94.7% d\'alignement avec la distribution d\'entraînement.',
+                            decompressedInput: 'N/A — not available from verification API',
+                            aiOutput: 'N/A — not available from verification API',
                           });
-                          toast.success('Certificat PDF généré avec succès!');
+                          toast.success('Audit certificate PDF generated.');
                         }}
                         className="w-full"
                         size="lg"
                       >
                         <FileDown className="mr-2 h-5 w-5" />
-                        Télécharger Certificat d'Audit PDF
+                        Download Audit Certificate PDF
                       </Button>
                     </div>
                   )}

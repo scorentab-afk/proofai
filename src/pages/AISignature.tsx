@@ -55,8 +55,8 @@ type VerificationResult = {
 };
 import { exportCognitiveTracePDF } from '@/lib/pdf-export';
 
-// Mock data for demo
-const MOCK_DATA = {
+// SAMPLE DATA — for beta testing, not for production use
+const SAMPLE_DATA = {
   executionId: 'exec_gemini_2025_demo_001',
   rawOutput: `Based on my analysis, here's the flight status information:
 
@@ -154,17 +154,17 @@ const AISignature = () => {
     }
   };
 
-  const loadMockData = () => {
-    setExecutionId(MOCK_DATA.executionId);
-    setRawOutput(MOCK_DATA.rawOutput);
-    setModelProvider(MOCK_DATA.modelProvider);
-    setModelId(MOCK_DATA.modelId);
-    setModelVersion(MOCK_DATA.modelVersion);
-    setTemperature(MOCK_DATA.temperature);
-    setMaxTokens(MOCK_DATA.maxTokens);
-    setRequesterName(MOCK_DATA.requesterName);
-    setRequesterOrg(MOCK_DATA.requesterOrg);
-    toast.success('Demo data loaded - Provider set to Google/Gemini');
+  const loadSampleData = () => {
+    setExecutionId(SAMPLE_DATA.executionId);
+    setRawOutput(SAMPLE_DATA.rawOutput);
+    setModelProvider(SAMPLE_DATA.modelProvider);
+    setModelId(SAMPLE_DATA.modelId);
+    setModelVersion(SAMPLE_DATA.modelVersion);
+    setTemperature(SAMPLE_DATA.temperature);
+    setMaxTokens(SAMPLE_DATA.maxTokens);
+    setRequesterName(SAMPLE_DATA.requesterName);
+    setRequesterOrg(SAMPLE_DATA.requesterOrg);
+    toast.success('Sample data loaded — for testing purposes during the private beta');
   };
 
   // Verification state
@@ -223,8 +223,8 @@ const AISignature = () => {
           max_tokens: parseInt(maxTokens),
         },
         executionMetrics: {
-          latency_ms: Math.floor(Math.random() * 500) + 200,
-          tokens_used: Math.floor(Math.random() * 1000) + 500,
+          latency_ms: 0,
+          tokens_used: 0,
         },
         requesterInfo: {
           name: requesterName || 'Anonymous',
@@ -393,12 +393,15 @@ const AISignature = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={loadMockData}
+                  onClick={loadSampleData}
                   className="w-full border-dashed border-primary/50 text-primary hover:bg-primary/10"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  Load Gemini demo data
+                  Load Sample Data
                 </Button>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  For testing purposes during the private beta
+                </p>
               </div>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
