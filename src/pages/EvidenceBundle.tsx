@@ -67,7 +67,7 @@ export default function EvidenceBundle() {
   const [isAnchoring, setIsAnchoring] = useState(false);
   const [result, setResult] = useState<EvidenceBundleResult | null>(null);
   const [anchorResult, setAnchorResult] = useState<BlockchainAnchorResult | null>(null);
-  const [selectedNetwork, setSelectedNetwork] = useState<'polygon' | 'ethereum'>('polygon');
+  const [selectedNetwork, setSelectedNetwork] = useState<'polygon'>('polygon');
 
   const steps = [
     { number: 1, title: 'Prompt ID', field: 'promptId', placeholder: 'Enter compressed prompt ID', icon: Package },
@@ -157,17 +157,18 @@ export default function EvidenceBundle() {
     }
   };
 
-  const handleLoadDemoData = () => {
-    const demoData = {
+  // SAMPLE DATA — for beta testing, not for production use
+  const handleLoadSampleData = () => {
+    const sampleData = {
       promptId: 'prompt_gemini_2025_001',
       executionId: 'exec_cognitive_analysis_001',
       analysisId: 'analysis_knowledge_graph_001',
       signatureId: 'sig_ed25519_a1b2c3d4e5f6',
       cognitiveHash: 'sha256_8f14e45fceea167a5a36dedd4bea2543b7e3c8f9d1e0a2b4c6d8e0f1a3b5c7d9',
     };
-    setFormData(demoData);
+    setFormData(sampleData);
     setCurrentStep(steps.length);
-    toast.success('Demo data loaded! Ready to create bundle.');
+    toast.success('Sample data loaded — for testing purposes during the private beta');
   };
 
   return (
@@ -197,11 +198,11 @@ export default function EvidenceBundle() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleLoadDemoData}
+                  onClick={handleLoadSampleData}
                   className="shrink-0"
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Load Demo
+                  Load Sample Data
                 </Button>
               </div>
             </CardHeader>
@@ -373,14 +374,13 @@ export default function EvidenceBundle() {
                         <div className="flex gap-3">
                           <Select
                             value={selectedNetwork}
-                            onValueChange={(value) => setSelectedNetwork(value as 'polygon' | 'ethereum')}
+                            onValueChange={(value) => setSelectedNetwork(value as 'polygon')}
                           >
                             <SelectTrigger className="w-[160px]">
                               <SelectValue placeholder="Select network" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="polygon">Polygon</SelectItem>
-                              <SelectItem value="ethereum">Ethereum</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button 

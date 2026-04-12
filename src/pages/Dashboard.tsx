@@ -64,12 +64,7 @@ const workflows = [
   },
 ];
 
-const recentActivity = [
-  { action: 'Bundle Verified', id: 'BND-4521', time: '2 mins ago', status: 'success' as const },
-  { action: 'AI Execution Complete', id: 'EXE-7832', time: '5 mins ago', status: 'success' as const },
-  { action: 'Prompt Compressed', id: 'PRM-1294', time: '12 mins ago', status: 'success' as const },
-  { action: 'Blockchain Anchor Pending', id: 'ANC-9012', time: '18 mins ago', status: 'pending' as const },
-];
+const recentActivity: Array<{ action: string; id: string; time: string; status: 'success' | 'pending' }> = [];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -111,41 +106,36 @@ export default function Dashboard() {
                   Get Started <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button variant="ghost" className="text-white border-white/30 hover:bg-white/10">
-                View Documentation
+              <Button asChild variant="ghost" className="text-white border-white/30 hover:bg-white/10">
+                <a href="https://github.com/proof-ai/proofai" target="_blank" rel="noopener noreferrer">
+                  View Documentation
+                </a>
               </Button>
             </div>
           </div>
         </motion.div>
 
         {/* Metrics */}
+        {/* TODO: Wire to real Supabase counts in next iteration */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <MetricCard
             label="Prompts Compressed"
-            value="1,247"
-            change="+12% from last week"
-            changeType="positive"
+            value="0"
             icon={Cpu}
           />
           <MetricCard
             label="AI Executions"
-            value="3,891"
-            change="+8% from last week"
-            changeType="positive"
+            value="0"
             icon={Zap}
           />
           <MetricCard
             label="Bundles Created"
-            value="892"
-            change="+15% from last week"
-            changeType="positive"
+            value="0"
             icon={Package}
           />
           <MetricCard
             label="Verified Evidence"
-            value="756"
-            change="99.8% success rate"
-            changeType="positive"
+            value="0"
             icon={Shield}
           />
         </motion.div>
@@ -202,38 +192,44 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent className="pb-4 md:pb-6">
-                <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-3 pb-4 border-b border-border last:border-0 last:pb-0"
-                    >
-                      <div className="mt-1">
-                        {activity.status === 'success' ? (
-                          <CheckCircle2 className="h-4 w-4 text-success" />
-                        ) : (
-                          <Clock className="h-4 w-4 text-warning" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">
-                          {activity.action}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                            {activity.id}
-                          </code>
-                          <span className="text-xs text-muted-foreground">
-                            {activity.time}
-                          </span>
+                {recentActivity.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No recent activity yet. Start by compressing a prompt.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-3 pb-4 border-b border-border last:border-0 last:pb-0"
+                      >
+                        <div className="mt-1">
+                          {activity.status === 'success' ? (
+                            <CheckCircle2 className="h-4 w-4 text-success" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-warning" />
+                          )}
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">
+                            {activity.action}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {activity.id}
+                            </code>
+                            <span className="text-xs text-muted-foreground">
+                              {activity.time}
+                            </span>
+                          </div>
+                        </div>
+                        <StatusBadge status={activity.status}>
+                          {activity.status === 'success' ? 'Done' : 'Pending'}
+                        </StatusBadge>
                       </div>
-                      <StatusBadge status={activity.status}>
-                        {activity.status === 'success' ? 'Done' : 'Pending'}
-                      </StatusBadge>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -260,8 +256,7 @@ export default function Dashboard() {
               <div className="h-[200px] flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <Activity className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-sm">Performance charts will display real-time data here</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">Connect to backend API to enable</p>
+                  <p className="text-sm">Analytics coming soon</p>
                 </div>
               </div>
             </CardContent>

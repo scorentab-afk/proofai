@@ -25,7 +25,7 @@ export default function PromptCompressor() {
   const [prompt, setPrompt] = useState('');
   const [compressionLevel, setCompressionLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [preserveContext, setPreserveContext] = useState(true);
-  const [targetModel, setTargetModel] = useState('gpt-4');
+  const [targetModel, setTargetModel] = useState('claude-sonnet-4-6');
   const [provider, setProvider] = useState<AIProvider>('anthropic');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CompressPromptResult | null>(null);
@@ -121,11 +121,13 @@ Example: Analyze the following document and extract key insights about customer 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="gpt-4">GPT-4</SelectItem>
-                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                    <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                    <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
-                    <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
+                    <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6</SelectItem>
+                    <SelectItem value="claude-haiku-4-5">Claude Haiku 4.5</SelectItem>
+                    <SelectItem value="claude-opus-4">Claude Opus 4</SelectItem>
+                    <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                    <SelectItem value="gpt-4o-mini">GPT-4o mini</SelectItem>
+                    <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+                    <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
