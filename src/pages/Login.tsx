@@ -167,7 +167,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Free plan includes 10 compressions & 5 executions per day.
+          Join our private beta — free access during the beta period.
         </p>
       </motion.div>
     </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Key, Plus, Copy, Trash2, User, CreditCard, Shield, Check, Loader2 } from 'lucide-react';
+import { Key, Plus, Copy, Trash2, User, Shield, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth, supabase } from '@/lib/auth';
 
@@ -23,17 +23,10 @@ interface ApiKey {
   created_at: string;
 }
 
-interface Subscription {
-  plan: string;
-  status: string;
-  proofs_used_this_period: number;
-  proofs_included: number;
-}
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [newKeyName, setNewKeyName] = useState('');
   const [creatingKey, setCreatingKey] = useState(false);
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
@@ -55,17 +48,6 @@ export default function Settings() {
         .select('*')
         .order('created_at', { ascending: false });
       if (keys) setApiKeys(keys);
-
-      // Load subscription
-      const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .single();
-      if (sub) {
-        setSubscription(sub);
-      } else {
-        setSubscription({ plan: 'free', status: 'active', proofs_used_this_period: 0, proofs_included: 100 });
-      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -128,15 +110,6 @@ export default function Settings() {
     loadData();
   };
 
-  const planColors: Record<string, string> = {
-    free: 'bg-muted text-muted-foreground',
-    payg: 'bg-blue-500/10 text-blue-600',
-    indie: 'bg-purple-500/10 text-purple-600',
-    startup: 'bg-primary/10 text-primary',
-    scale: 'bg-green-500/10 text-green-600',
-    enterprise: 'bg-amber-500/10 text-amber-600',
-  };
-
   return (
     <MainLayout title="Settings" subtitle="Manage your account, API keys, and billing">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -161,37 +134,24 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Subscription */}
+        {/* Plan */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
+              <Shield className="h-5 w-5 text-primary" />
               Plan
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {subscription ? (
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge className={planColors[subscription.plan] || planColors.free}>
-                      {subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {subscription.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {subscription.proofs_used_this_period || 0} / {subscription.proofs_included === -1 ? 'Unlimited' : subscription.proofs_included || 100} proofs used
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => window.location.href = '/pricing'}>
-                  Upgrade
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            )}
+            <div className="space-y-2">
+              <Badge className="bg-primary/10 text-primary">Private Beta</Badge>
+              <p className="text-sm text-muted-foreground">
+                Your proofAI access is free during the private beta period. You're
+                in Bring Your Own Key mode — provide your own Anthropic API key and
+                proofAI handles signature, anchoring, and the regulator portal at
+                no cost.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
