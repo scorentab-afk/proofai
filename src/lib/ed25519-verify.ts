@@ -1,8 +1,10 @@
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 
-// @noble/ed25519 v2 requires a sha512 implementation
+// @noble/ed25519 v2 requires a sha512 implementation.
+// Set both sync and async so verifyAsync works in any browser/bundler context.
 ed.etc.sha512Sync = (...m: Parameters<typeof sha512>) => sha512(...m);
+ed.etc.sha512Async = async (...m: Parameters<typeof sha512>) => sha512(...m);
 
 /**
  * Verify an Ed25519 signature against a message and public key.
