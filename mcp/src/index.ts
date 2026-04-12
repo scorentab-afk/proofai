@@ -81,7 +81,7 @@ server.tool(
         executionMetrics: { tokens: execution.metadata.tokens.total },
         requesterInfo: { source: "mcp-server" },
         timestamps: { request_received: new Date().toISOString() },
-      })) as { signatureId: string };
+      })) as { signatureId: string; signature: { signature: string; public_key: string } };
 
       // 5. Bundle — pass full analysis so nodes are persisted
       const bundle = (await callAPI("bundle", {
@@ -95,6 +95,8 @@ server.tool(
         provider: execution.metadata.provider,
         model: execution.metadata.model,
         analysisData: analysis,
+        signatureHex: signature.signature?.signature,
+        signerPubkey: signature.signature?.public_key,
       })) as { id: string; bundleHash: string };
 
       // 6. Anchor

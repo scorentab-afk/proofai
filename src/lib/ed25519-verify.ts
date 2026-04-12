@@ -24,7 +24,9 @@ export async function verifyEd25519(
   if (signatureHex.length !== 128) return false;
   if (pubkeyHex.length !== 64) return false;
   try {
-    return await ed.verifyAsync(signatureHex, messageHex, pubkeyHex);
+    // Use synchronous verify (sha512Sync is set above) — avoids async/promise
+    // resolution issues in some bundler/browser environments.
+    return ed.verify(signatureHex, messageHex, pubkeyHex);
   } catch {
     return false;
   }

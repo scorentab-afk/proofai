@@ -64,18 +64,17 @@ serve(async (req) => {
       );
     }
 
-    // Generate or load Ed25519 key pair
-    // In production, use a persistent key stored in Supabase Vault
+    // Load stable Ed25519 private key from Supabase Secrets
     const privKeyHex = Deno.env.get("ED25519_PRIVATE_KEY");
-    let privKey: Uint8Array;
-
-    if (privKeyHex) {
-      privKey = new Uint8Array(
-        privKeyHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+    if (!privKeyHex || privKeyHex.trim() === "") {
+      throw new Error(
+        "ED25519_PRIVATE_KEY missing — refusing to sign with ephemeral key. See docs/SIGNING.md"
       );
-    } else {
-      privKey = ed.utils.randomPrivateKey();
     }
+
+    const privKey = new Uint8Array(
+      privKeyHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+    );
 
     const pubKey = await ed.getPublicKeyAsync(privKey);
     const now = new Date();

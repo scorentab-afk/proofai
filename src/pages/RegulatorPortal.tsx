@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink, Lock, Unlock, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { verifyEd25519 } from '@/lib/ed25519-verify';
 import { PROOFAI_SIGNER_PUBKEY } from '@/lib/proofai-pubkey';
+import { verifyOnChain } from '@/lib/polygon-verify';
 
 // Deterministic JSON — mirrors stableStringify in bundle/index.ts.
 // Sorts all object keys alphabetically so that JSONB round-trips don't break the hash.
@@ -97,6 +98,10 @@ export default function RegulatorPortal() {
   // Ed25519 client-side verification state
   const [ed25519Status, setEd25519Status] = useState<'idle' | 'verifying' | 'valid' | 'invalid' | 'legacy'>('idle');
 
+  // Polygon on-chain verification state (zero ProofAI involvement)
+  const [anchorVerified, setAnchorVerified] = useState<'idle' | 'verifying' | 'valid' | 'invalid'>('idle');
+  const [anchorReason, setAnchorReason] = useState<string | null>(null);
+
   const isTokenValid = token.trim().startsWith('reg_');
 
   // Run Ed25519 verification client-side whenever a report is loaded
@@ -112,6 +117,21 @@ export default function RegulatorPortal() {
       .catch(() => setEd25519Status('invalid'));
   }, [report]);
 
+  // Polygon on-chain verification — queries public RPC directly, no ProofAI server
+  useEffect(() => {
+    const txHash = report?.blockchainProof?.transactionHash;
+    const bundleHash = report?.bundleHash;
+    if (!txHash || !bundleHash) { setAnchorVerified('idle'); setAnchorReason(null); return; }
+    setAnchorVerified('verifying');
+    setAnchorReason(null);
+    verifyOnChain(txHash, bundleHash)
+      .then(result => {
+        setAnchorVerified(result.valid ? 'valid' : 'invalid');
+        setAnchorReason(result.reason ?? null);
+      })
+      .catch(e => { setAnchorVerified('invalid'); setAnchorReason((e as Error).message); });
+  }, [report]);
+
   const handleVerify = async () => {
     const q = query.trim();
     if (!q) return;
@@ -122,6 +142,8 @@ export default function RegulatorPortal() {
     setComputedHash(null);
     setJsonExpanded(false);
     setEd25519Status('idle');
+    setAnchorVerified('idle');
+    setAnchorReason(null);
 
     const isTxHash = q.startsWith('0x');
     const headers: Record<string, string> = {
@@ -178,6 +200,11 @@ export default function RegulatorPortal() {
   const networkLabel = report?.blockchainProof?.network
     ? report.blockchainProof.network.charAt(0).toUpperCase() + report.blockchainProof.network.slice(1)
     : 'Polygon Mainnet';
+  const anchorLabel =
+    anchorVerified === 'valid' ? '✅ Ancré'
+    : anchorVerified === 'invalid' ? '❌ Invalide'
+    : anchorVerified === 'verifying' ? '⏳ Vérifie…'
+    : '—';
   const isFullAccess = report?.content?.accessLevel === 'full';
 
   return (
@@ -342,8 +369,8 @@ export default function RegulatorPortal() {
                 {[
                   { label: 'Articles vérifiés', value: `${passCount}/${totalCount}` },
                   { label: 'Score cohérence', value: report.complianceScore?.replace('Score: ', '') ?? '—' },
-                  { label: 'Signature', value: ed25519Label },
-                  { label: 'Réseau', value: networkLabel },
+                  { label: 'Signature Ed25519', value: ed25519Label },
+                  { label: 'Polygon on-chain', value: anchorLabel },
                 ].map(card => (
                   <div key={card.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
                     <p className="text-xs text-gray-500 mb-1">{card.label}</p>
@@ -410,7 +437,7 @@ export default function RegulatorPortal() {
                       <Lock className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                       <p className="text-xs text-blue-700 leading-relaxed">
                         <span className="font-semibold">Ce calcul est effectué entièrement dans votre navigateur.</span>{' '}
-                        Aucune donnée n'est envoyée à nos serveurs. Vous pouvez vérifier le code source.
+                        Aucune donnée n'est envoyée à nos serveurs. La vérification Polygon on-chain interroge directement un nœud public (polygon-rpc.com / Ankr / LlamaRPC) — zéro intermédiaire ProofAI.
                       </p>
                     </div>
 
@@ -520,6 +547,62 @@ export default function RegulatorPortal() {
                       Vérifier sur Polygonscan
                       <ExternalLink className="h-4 w-4" />
                     </a>
+                  </div>
+                </div>
+              )}
+
+              {/* ── VÉRIFICATION POLYGON ON-CHAIN ─────────────── */}
+              {report.blockchainProof && anchorVerified !== 'idle' && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-sm font-semibold text-gray-800">Vérification Polygon on-chain</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Requête directe vers un nœud Polygon public — sans passer par ProofAI
+                    </p>
+                  </div>
+                  <div className="px-6 py-5 space-y-4">
+                    {anchorVerified === 'verifying' && (
+                      <div className="flex items-center gap-3 text-sm text-gray-500">
+                        <RefreshCw className="h-4 w-4 animate-spin text-[#185FA5]" />
+                        Interrogation du réseau Polygon…
+                      </div>
+                    )}
+                    {anchorVerified === 'valid' && (
+                      <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                          <p className="text-sm font-semibold text-green-800">
+                            Ancrage vérifié on-chain — calldata = bundle_hash
+                          </p>
+                        </div>
+                        <p className="text-xs text-green-700 pl-7">
+                          La transaction Polygon contient exactement{' '}
+                          <span className="font-mono">0x{report.bundleHash?.slice(0, 16)}…</span>{' '}
+                          comme données. Vérifiable par tout nœud Ethereum-compatible.
+                        </p>
+                      </div>
+                    )}
+                    {anchorVerified === 'invalid' && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-5 w-5 text-red-500 shrink-0" />
+                          <p className="text-sm font-semibold text-red-700">Vérification on-chain échouée</p>
+                        </div>
+                        {anchorReason && (
+                          <p className="text-xs text-red-500 pl-7">{anchorReason}</p>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Commande de vérification manuelle (eth_getTransactionByHash)</p>
+                      <pre className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-600 overflow-x-auto whitespace-pre-wrap break-all">
+{`curl -s https://polygon-rpc.com \\
+  -H "Content-Type: application/json" \\
+  -d '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["${report.blockchainProof.transactionHash}"],"id":1}' \\
+  | python3 -c "import sys,json; tx=json.load(sys.stdin)['result']; print(tx['input'] == '0x${report.bundleHash}')"
+# Expected output: True`}
+                      </pre>
+                    </div>
                   </div>
                 </div>
               )}

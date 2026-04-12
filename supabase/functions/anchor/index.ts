@@ -7,14 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
-async function sha256(data: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(data));
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -55,12 +47,35 @@ serve(async (req) => {
       );
     }
 
+    // Fetch bundle_hash from Supabase — this is what we anchor on-chain.
+    // Regulators can verify independently: eth_getTransactionByHash → input === "0x" + bundle_hash
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+    let bundleHash: string | null = null;
+    if (supabase) {
+      const { data: bundleRow } = await supabase
+        .from("evidence_bundles")
+        .select("bundle_hash")
+        .eq("id", bundleId)
+        .single();
+      bundleHash = bundleRow?.bundle_hash ?? null;
+    }
+
+    if (!bundleHash || !/^[a-f0-9]{64}$/i.test(bundleHash)) {
+      return new Response(
+        JSON.stringify({ error: "bundle_hash not found or invalid for bundleId" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Polygon mainnet RPC
     const rpcUrl = `https://polygon-mainnet.g.alchemy.com/v2/${alchemyKey}`;
 
-    // Compute the data payload — the bundle hash to anchor
-    const dataHash = await sha256(`proofai_anchor_${bundleId}_${Date.now()}`);
-    const dataHex = `0x${dataHash}`;
+    // Calldata = "0x" + bundle_hash (32 raw bytes, no derivation, no timestamp).
+    // Any regulator can verify: eth_getTransactionByHash → tx.input === "0x" + bundle_hash
+    const dataHex = `0x${bundleHash}`;
 
     const cleanKey = privateKey.startsWith("0x") ? privateKey.slice(2) : privateKey;
     const address = await getAddress(cleanKey);
@@ -139,12 +154,8 @@ serve(async (req) => {
         ? "https://polygonscan.com/tx"
         : "https://etherscan.io/tx";
 
-    // Store in Supabase if available
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    // Store in Supabase
+    if (supabase) {
       await supabase.from("blockchain_anchors").insert({
         bundle_id: bundleId,
         transaction_hash: transactionHash,

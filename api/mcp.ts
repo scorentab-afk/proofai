@@ -152,7 +152,7 @@ async function handleCertify(args: Record<string, unknown>): Promise<string> {
     executionMetrics: { tokens: execution.metadata.tokens.total },
     requesterInfo: { source: "mcp-http" },
     timestamps: { request_received: new Date().toISOString() },
-  })) as { signatureId: string };
+  })) as { signatureId: string; signature: { signature: string; public_key: string } };
 
   const bundle = (await callAPI("bundle", {
     promptId: compressed.id,
@@ -165,6 +165,8 @@ async function handleCertify(args: Record<string, unknown>): Promise<string> {
     provider: execution.metadata.provider,
     model: execution.metadata.model,
     analysisData: analysis,
+    signatureHex: signature.signature?.signature,
+    signerPubkey: signature.signature?.public_key,
   })) as { id: string; bundleHash: string };
 
   let anchor: { transactionHash?: string; explorerUrl?: string; status?: string } = {};
@@ -220,7 +222,7 @@ async function handleLog(args: Record<string, unknown>): Promise<string> {
     executionMetrics: {},
     requesterInfo: { source: "mcp-http-log" },
     timestamps: { logged_at: new Date().toISOString() },
-  })) as { signatureId: string };
+  })) as { signatureId: string; signature: { signature: string; public_key: string } };
   const bundle = (await callAPI("bundle", {
     promptId: compressed.id,
     executionId: `ext_${Date.now()}`,
@@ -232,6 +234,8 @@ async function handleLog(args: Record<string, unknown>): Promise<string> {
     provider,
     model,
     analysisData: analysis,
+    signatureHex: signature.signature?.signature,
+    signerPubkey: signature.signature?.public_key,
   })) as { id: string; bundleHash: string };
 
   let explorerUrl: string | null = null;
