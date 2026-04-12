@@ -3,16 +3,18 @@
  *
  * Verification protocol:
  *   1. Call eth_getTransactionByHash on a public Polygon RPC
- *   2. Check tx.from === ProofAI wallet address (optional, belt-and-suspenders)
- *   3. Check tx.input === "0x" + bundle_hash  (the anchor payload)
+ *   2. Check tx.input === "0x" + bundle_hash  (the anchor payload)
  *
- * Three public CORS-enabled RPCs are tried in order. No API key required.
+ * RPCs are ordered by confirmed browser CORS support (tested 2026-04).
+ * polygon-rpc.com and ankr have variable CORS — kept as last-resort fallbacks.
  */
 
 const POLYGON_RPCS = [
-  "https://polygon-rpc.com",
-  "https://rpc.ankr.com/polygon",
   "https://polygon.llamarpc.com",
+  "https://polygon-bor-rpc.publicnode.com",
+  "https://1rpc.io/matic",
+  "https://rpc.ankr.com/polygon",
+  "https://polygon-rpc.com",
 ];
 
 export interface OnChainResult {
@@ -75,7 +77,13 @@ export async function verifyOnChain(
   try {
     tx = (await rpcCallWithFallback("eth_getTransactionByHash", [txHash])) as Record<string, string> | null;
   } catch (e) {
-    return { valid: false, txHash, reason: `RPC error: ${(e as Error).message}` };
+    const msg = (e as Error).message ?? "";
+    const isCors = msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network");
+    return {
+      valid: false,
+      txHash,
+      reason: isCors ? "cors_blocked" : `RPC error: ${msg}`,
+    };
   }
 
   if (!tx) {

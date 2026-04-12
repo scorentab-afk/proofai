@@ -202,6 +202,7 @@ export default function RegulatorPortal() {
     : 'Polygon Mainnet';
   const anchorLabel =
     anchorVerified === 'valid' ? '✅ Ancré'
+    : (anchorVerified === 'invalid' && anchorReason === 'cors_blocked') ? '⚠ Indispo'
     : anchorVerified === 'invalid' ? '❌ Invalide'
     : anchorVerified === 'verifying' ? '⏳ Vérifie…'
     : '—';
@@ -583,13 +584,30 @@ export default function RegulatorPortal() {
                       </div>
                     )}
                     {anchorVerified === 'invalid' && (
-                      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-2">
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-3">
                         <div className="flex items-center gap-2">
-                          <XCircle className="h-5 w-5 text-red-500 shrink-0" />
-                          <p className="text-sm font-semibold text-red-700">Vérification on-chain échouée</p>
+                          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                          <p className="text-sm font-semibold text-amber-800">
+                            {anchorReason === 'cors_blocked'
+                              ? 'Vérification on-chain temporairement indisponible depuis ce navigateur'
+                              : 'Vérification on-chain échouée'}
+                          </p>
                         </div>
-                        {anchorReason && (
-                          <p className="text-xs text-red-500 pl-7">{anchorReason}</p>
+                        <p className="text-xs text-amber-700 pl-7">
+                          {anchorReason === 'cors_blocked'
+                            ? 'Les nœuds Polygon publics ont bloqué la requête (restriction CORS réseau). La transaction reste vérifiable directement :'
+                            : anchorReason}
+                        </p>
+                        {(anchorReason === 'cors_blocked' && report.blockchainProof) && (
+                          <a
+                            href={report.blockchainProof.explorerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 ml-7 h-10 px-5 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors w-fit"
+                          >
+                            Vérifier sur Polygonscan
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
                         )}
                       </div>
                     )}
